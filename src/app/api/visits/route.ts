@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Visit from '@/models/Visit';
 
+function formatDateToKST_YYYYMMDD(dateObj: Date): string {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(dateObj);
+}
+
+function getDateAtKSTMIdnight(dateString: string): Date {
+  return new Date(`${dateString}T00:00:00+09:00`);
+}
+
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -22,15 +37,14 @@ export async function GET(request: NextRequest) {
       if (pathnamePattern) query.pathname = { $regex: pathnamePattern, $options: 'i' };
 
       if (startDateParam && endDateParam) {
-        const startDate = new Date(startDateParam);
-        startDate.setHours(0, 0, 0, 0);
+        const startDateKST = getDateAtKSTMIdnight(startDateParam);
 
-        const endDate = new Date(endDateParam);
-        endDate.setHours(23, 59, 59, 999);
+        const endDateKST = getDateAtKSTMIdnight(endDateParam);
+        endDateKST.setHours(23, 59, 59, 999);
 
         query.date = {
-          $gte: startDate,
-          $lte: endDate,
+          $gte: startDateKST,
+          $lte: endDateKST,
         };
       }
 
@@ -56,13 +70,14 @@ export async function GET(request: NextRequest) {
       }
 
       if (startDateParam && endDateParam) {
-        const startDate = new Date(startDateParam);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(endDateParam);
-        endDate.setHours(23, 59, 59, 999);
+        const startDateKST = getDateAtKSTMIdnight(startDateParam);
+
+        const endDateKST = getDateAtKSTMIdnight(endDateParam);
+        endDateKST.setHours(23, 59, 59, 999);
+
         matchConditions.date = {
-          $gte: startDate,
-          $lte: endDate,
+          $gte: startDateKST,
+          $lte: endDateKST,
         };
       }
 
@@ -129,11 +144,15 @@ export async function GET(request: NextRequest) {
       }
 
       if (!isTotalQuery) {
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - days + 1);
-        startDate.setHours(0, 0, 0, 0);
+        const nowKST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+        nowKST.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(nowKST);
         endDate.setHours(23, 59, 59, 999);
+
+        const startDate = new Date(nowKST);
+        startDate.setDate(nowKST.getDate() - days + 1);
+        startDate.setHours(0, 0, 0, 0);
 
         matchConditions.date = {
           $gte: startDate,
@@ -182,47 +201,36 @@ export async function GET(request: NextRequest) {
 
       const dailyVisits = await Visit.aggregate(aggregationPipeline);
 
-      let resultData = dailyVisits;
+      let resultData;
 
       if (!isTotalQuery && daysParam) {
-        const kstReferenceDate = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+        const kstCurrentDay = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+        kstCurrentDay.setHours(0, 0, 0, 0);
 
         const filledResult = [];
         for (let i = 0; i < days; i++) {
-          const targetDate = new Date(kstReferenceDate);
-          targetDate.setDate(kstReferenceDate.getDate() - (days - 1) + i);
-          targetDate.setHours(0, 0, 0, 0);
+          const targetKstDate = new Date(kstCurrentDay);
+          targetKstDate.setDate(kstCurrentDay.getDate() - (days - 1) + i);
 
-          const year = targetDate.getFullYear();
-          const month = (targetDate.getMonth() + 1).toString().padStart(2, '0');
-          const day = targetDate.getDate().toString().padStart(2, '0');
-          const formattedKstDate = `${year}-${month}-${day}`;
+          const formattedTargetKstDate = formatDateToKST_YYYYMMDD(targetKstDate);
 
           const foundVisit = dailyVisits.find(
             (visit) => {
-              const visitDate = new Date(visit.date);
-              const visitYear = visitDate.getFullYear();
-              const visitMonth = (visitDate.getMonth() + 1).toString().padStart(2, '0');
-              const visitDay = visitDate.getDate().toString().padStart(2, '0');
-              return `${visitYear}-${visitMonth}-${visitDay}` === formattedKstDate;
+              return formatDateToKST_YYYYMMDD(visit.date) === formattedTargetKstDate;
             }
           );
 
           filledResult.push({
-            date: formattedKstDate,
+            date: formattedTargetKstDate,
             views: foundVisit ? foundVisit.views : 0,
             uniqueVisitors: foundVisit ? foundVisit.uniqueVisitors : 0,
           });
         }
         resultData = filledResult;
-      } else if (isTotalQuery) {
+      } else {
         resultData = dailyVisits.map(visit => {
-          const visitDate = new Date(visit.date);
-          const year = visitDate.getFullYear();
-          const month = (visitDate.getMonth() + 1).toString().padStart(2, '0');
-          const day = visitDate.getDate().toString().padStart(2, '0');
           return {
-            date: `${year}-${month}-${day}`,
+            date: formatDateToKST_YYYYMMDD(visit.date),
             views: visit.views,
             uniqueVisitors: visit.uniqueVisitors,
           };
