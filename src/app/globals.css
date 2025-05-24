@@ -1,26 +1,264 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@plugin '@tailwindcss/typography';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.5rem;
+  --background: #f7f8fa;
+  --foreground: #111111;
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: #8151ca;
+  --primary-foreground: #fff;
+  --secondary: #a259f7;
+  --secondary-foreground: #fff;
+  --muted: #f8f9fb;
+  --muted-foreground: #8a94a6;
+  --accent: #afaf00;
+  --accent-foreground: #fff;
+  --destructive: #ca5153;
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.705 0.015 286.067);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: #e9e3fa;
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: #fff;
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: #8151ca;
+  --sidebar-primary-foreground: #fff;
+  --sidebar-accent: oklch(0.705 0.015 286.067);
+  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.705 0.015 286.067);
+}
+
+.dark {
+  --background: #111111;
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #8151ca;
+  --primary-foreground: #fff;
+  --secondary: #a259f7;
+  --secondary-foreground: #fff;
+  --muted: #23243a;
+  --muted-foreground: #8a94a6;
+  --accent: #d6ec47;
+  --accent-foreground: #000;
+  --destructive: #ca5153;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.552 0.016 285.938);
+  --chart-1: oklch(0.43 0.1 264.376);
+  --chart-2: oklch(0.5 0.08 162.48);
+  --chart-3: oklch(0.6 0.1 70.08);
+  --chart-4: #e9e3fa;
+  --chart-5: oklch(0.345 0.1 16.439);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #8151ca;
+  --sidebar-primary-foreground: #fff;
+  --sidebar-accent: oklch(0.552 0.016 285.938);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.552 0.016 285.938);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    text-underline-position: under;
+  }
+  body {
+    @apply bg-background text-foreground overflow-hidden;
+  }
+  button {
+    appearance: none !important;
+    outline: none !important;
+  }
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+  .prose pre {
+    padding: 0 !important;
+    background-color: transparent !important;
+    div {
+      background-color: var(--color-background) !important;
+    }
+  }
+  .heroicon-sw-2 path {
+    stroke-width: 2 !important;
+  }
+  .heroicon-sw-1\.75 path {
+    stroke-width: 1.75 !important;
+  }
+  .heroicon-sw-1\.5 path {
+    stroke-width: 1.5 !important;
+  }
+  .heroicon-sw-1\.2 path {
+    stroke-width: 1.2 !important;
+  }
+  .heroicon-sw-2_5 path {
+    stroke-width: 2.5 !important;
+  }
+  .heroicon-sw-3 path {
+    stroke-width: 3 !important;
+  }
+
+  /* 스크롤바 스타일 */
+  .scrollbar::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+    background: transparent; /* 트랙 배경 */
+  }
+  .scrollbar::-webkit-scrollbar-thumb {
+    background: #aaaaaf; /* 평소에는 thumb 투명 */
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .dark .hover-scrollbar::-webkit-scrollbar-thumb {
+    background: #33333a; /* 평소에는 thumb 투명 */
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .hover-scrollbar::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+    background: transparent; /* 트랙 배경 */
+  }
+  .hover-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent; /* 평소에는 thumb 투명 */
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  /* 카드(group) 호버 시 스크롤바 thumb 보이기 */
+  .group:hover .hover-scrollbar::-webkit-scrollbar-thumb {
+    background: #aaaaaf; /* 라이트 모드 thumb 색상 */
+  }
+  .dark .group:hover .hover-scrollbar::-webkit-scrollbar-thumb {
+    background: #33333a; /* 다크 모드 thumb 색상 */
+  }
+  .hover-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border); /* 스크롤바 thumb 자체 호버 시 (옵션) */
+  }
+  .dark .hover-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border); /* 스크롤바 thumb 자체 호버 시 (옵션) */
+  }
+  .hover-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Firefox */
+  .hover-scrollbar {
+    scrollbar-width: thin; /* 'auto' 또는 'thin' */
+    scrollbar-color: transparent transparent; /* 평소: thumb track (둘 다 투명) */
+  }
+  .group:hover .hover-scrollbar {
+    /* Firefox는 thumb/track 색상을 동시에 지정해야 함. track은 투명 유지 */
+    scrollbar-color: var(--color-muted-foreground) transparent;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Loading Spinner Animations (User Provided) */
+.loading-spinner-container {
+  --uib-size: 32px;
+  --uib-color: var(--color-muted-foreground);
+  --uib-speed: 2s;
+  --uib-bg-opacity: 0.2;
+  height: var(--uib-size);
+  width: var(--uib-size);
+  transform-origin: center;
+  animation: rotate var(--uib-speed) linear infinite;
+  will-change: transform;
+  overflow: visible;
+}
+
+.loading-spinner-car {
+  fill: none;
+  stroke: var(--uib-color);
+  stroke-dasharray: 1, 200;
+  stroke-dashoffset: 0;
+  stroke-linecap: round;
+  animation: stretch calc(var(--uib-speed) * 0.75) ease-in-out infinite;
+  will-change: stroke-dasharray, stroke-dashoffset;
+  transition: stroke 0.5s ease;
+}
+
+.loading-spinner-track {
+  fill: none;
+  stroke: var(--color-muted-foreground);
+  opacity: var(--uib-bg-opacity);
+  transition: stroke 0.5s ease;
+}
+
+@keyframes rotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes stretch {
+  0% {
+    stroke-dasharray: 0, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 75, 150;
+    stroke-dashoffset: -25;
+  }
+  100% {
+    stroke-dashoffset: -100;
+  }
 }
