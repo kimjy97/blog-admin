@@ -69,7 +69,7 @@ export default function PostList({
             </div>
             <div className="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {Array.from({ length: 5 }).map((_, ii) => (
-                <Skeleton key={ii} className="w-[334px] h-[187px]" />
+                <Skeleton key={ii} className="h-[187px]" />
               ))}
             </div>
           </div>
