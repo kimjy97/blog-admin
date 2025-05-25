@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import Post from '@/models/Post';
 import { connectDB } from '@/lib/db';
 
+function getDateAtKSTMIdnight(dateString: string): Date {
+  return new Date(`${dateString}T00:00:00+09:00`);
+}
+
 export async function GET(req: NextRequest) {
   await connectDB();
 
@@ -9,35 +13,41 @@ export async function GET(req: NextRequest) {
   const startDateParam = searchParams.get('startDate');
   const endDateParam = searchParams.get('endDate');
 
-  if (!startDateParam || !endDateParam) {
-    return NextResponse.json({ error: 'startDate and endDate parameters are required' }, { status: 400 });
+  const matchQuery: any = {
+    status: true,
+    tags: { $exists: true, $not: { $size: 0 } },
+  };
+
+  if (startDateParam && endDateParam) {
+    try {
+      const startDate = getDateAtKSTMIdnight(startDateParam);
+      const endDate = getDateAtKSTMIdnight(endDateParam);
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return NextResponse.json({ success: false, message: 'Invalid date format for startDate or endDate. Please use YYYY-MM-DD.' }, { status: 400 });
+      }
+
+      endDate.setHours(23, 59, 59, 999);
+
+      matchQuery.createdAt = {
+        $gte: startDate,
+        $lte: endDate,
+      };
+    } catch {
+      return NextResponse.json({ success: false, message: 'Error processing date parameters.' }, { status: 400 });
+    }
+  } else if (startDateParam || endDateParam) {
+    return NextResponse.json({ success: false, message: 'Both startDate and endDate are required for date filtering, or neither to get all tags.' }, { status: 400 });
   }
 
   try {
-    const startDate = new Date(startDateParam);
-    const endDate = new Date(endDateParam);
-
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      return NextResponse.json({ error: 'Invalid date format for startDate or endDate' }, { status: 400 });
-    }
-
-    endDate.setHours(23, 59, 59, 999);
-
-    // 지표에 대한 가중치 정의
     const weightViews = 1;
     const weightLikes = 2;
     const weightComments = 3;
 
     const popularTags = await Post.aggregate([
       {
-        $match: {
-          createdAt: {
-            $gte: startDate,
-            $lte: endDate,
-          },
-          tags: { $exists: true, $not: { $size: 0 } },
-          status: true,
-        },
+        $match: matchQuery,
       },
       {
         $unwind: '$tags',
@@ -48,9 +58,9 @@ export async function GET(req: NextRequest) {
           totalScore: {
             $sum: {
               $add: [
-                { $multiply: ['$view', weightViews] },
-                { $multiply: ['$like', weightLikes] },
-                { $multiply: ['$cmtnum', weightComments] },
+                { $ifNull: [{ $multiply: ['$view', weightViews] }, 0] },
+                { $ifNull: [{ $multiply: ['$like', weightLikes] }, 0] },
+                { $ifNull: [{ $multiply: ['$cmtnum', weightComments] }, 0] },
               ],
             },
           },
@@ -68,8 +78,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: formattedTags });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching popular tags:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: false, message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -60,11 +60,29 @@ export default function VisitorLogChart() {
 
   const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
   const [range, setRange] = useState<'dayOfWeek' | 'daily' | 'month'>('dayOfWeek');
+  const [includeLocalIps] = useState(false);
 
-  const daysToFetch = useMemo(() => {
-    if (range === 'daily') return 14;
-    if (range === 'month') return 365;
-    return 7;
+  const { startDateString, endDateString } = useMemo(() => {
+    const today = new Date();
+    const currentEndDate = new Date(today);
+    const edString = `${currentEndDate.getFullYear()}-${String(currentEndDate.getMonth() + 1).padStart(2, '0')}-${String(currentEndDate.getDate()).padStart(2, '0')}`;
+    let sdString = '';
+
+    if (range === 'dayOfWeek') {
+      const currentStartDate = new Date(today);
+      currentStartDate.setDate(today.getDate() - 6);
+      sdString = `${currentStartDate.getFullYear()}-${String(currentStartDate.getMonth() + 1).padStart(2, '0')}-${String(currentStartDate.getDate()).padStart(2, '0')}`;
+    } else if (range === 'daily') {
+      const currentStartDate = new Date(today);
+      currentStartDate.setDate(today.getDate() - 13);
+      sdString = `${currentStartDate.getFullYear()}-${String(currentStartDate.getMonth() + 1).padStart(2, '0')}-${String(currentStartDate.getDate()).padStart(2, '0')}`;
+    } else if (range === 'month') {
+      const currentStartDate = new Date(today);
+      currentStartDate.setMonth(today.getMonth() - 11);
+      currentStartDate.setDate(1);
+      sdString = `${currentStartDate.getFullYear()}-${String(currentStartDate.getMonth() + 1).padStart(2, '0')}-${String(currentStartDate.getDate()).padStart(2, '0')}`;
+    }
+    return { startDateString: sdString, endDateString: edString };
   }, [range]);
 
   const {
@@ -72,8 +90,8 @@ export default function VisitorLogChart() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['dashboard', 'chartVisits', range],
-    queryFn: () => fetchChartVisits(daysToFetch),
+    queryKey: ['dashboard', 'chartVisits', range, startDateString, endDateString, includeLocalIps],
+    queryFn: () => fetchChartVisits(startDateString, endDateString, includeLocalIps),
     select: (response) => {
       if (response.success) {
         return response.data;

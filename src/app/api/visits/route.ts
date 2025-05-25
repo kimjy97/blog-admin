@@ -129,35 +129,48 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      let isTotalQuery = false;
-      let days = 7;
+      let useDateRangeFilter = false;
+      let isTotalQueryForFallback = false;
+      let daysForFallback = 7;
 
-      if (daysParam) {
-        const parsedDays = parseInt(daysParam, 10);
-        if (parsedDays <= 0) {
-          isTotalQuery = true;
-        } else {
-          days = parsedDays;
-        }
-      } else {
-        isTotalQuery = true;
-      }
-
-      if (!isTotalQuery) {
-        const nowKST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-        nowKST.setHours(0, 0, 0, 0);
-
-        const endDate = new Date(nowKST);
-        endDate.setHours(23, 59, 59, 999);
-
-        const startDate = new Date(nowKST);
-        startDate.setDate(nowKST.getDate() - days + 1);
-        startDate.setHours(0, 0, 0, 0);
+      if (startDateParam && endDateParam) {
+        const startDateKST = getDateAtKSTMIdnight(startDateParam);
+        const endDateKST = getDateAtKSTMIdnight(endDateParam);
+        endDateKST.setHours(23, 59, 59, 999);
 
         matchConditions.date = {
-          $gte: startDate,
-          $lte: endDate,
+          $gte: startDateKST,
+          $lte: endDateKST,
         };
+        useDateRangeFilter = true;
+      } else {
+        if (daysParam) {
+          const parsedDays = parseInt(daysParam, 10);
+          if (parsedDays <= 0) {
+            isTotalQueryForFallback = true;
+          } else {
+            daysForFallback = parsedDays;
+          }
+        } else {
+          isTotalQueryForFallback = true;
+        }
+
+        if (!isTotalQueryForFallback) {
+          const todayKSTString = formatDateToKST_YYYYMMDD(new Date());
+          const nowKST = getDateAtKSTMIdnight(todayKSTString);
+
+          const endDate = new Date(nowKST);
+          endDate.setHours(23, 59, 59, 999);
+
+          const startDate = new Date(nowKST);
+          startDate.setDate(nowKST.getDate() - daysForFallback + 1);
+          startDate.setHours(0, 0, 0, 0);
+
+          matchConditions.date = {
+            $gte: startDate,
+            $lte: endDate,
+          };
+        }
       }
 
       if (pathnamePattern) {
@@ -200,26 +213,41 @@ export async function GET(request: NextRequest) {
       ];
 
       const dailyVisits = await Visit.aggregate(aggregationPipeline);
-
       let resultData;
 
-      if (!isTotalQuery && daysParam) {
-        const kstCurrentDay = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-        kstCurrentDay.setHours(0, 0, 0, 0);
-
+      if (useDateRangeFilter) {
+        const startDateKST = getDateAtKSTMIdnight(startDateParam!);
+        const endDateKST = getDateAtKSTMIdnight(endDateParam!);
         const filledResult = [];
-        for (let i = 0; i < days; i++) {
-          const targetKstDate = new Date(kstCurrentDay);
-          targetKstDate.setDate(kstCurrentDay.getDate() - (days - 1) + i);
+        const currentDate = new Date(startDateKST);
 
+        while (currentDate <= endDateKST) {
+          const formattedCurrentDate = formatDateToKST_YYYYMMDD(currentDate);
+          const foundVisit = dailyVisits.find(
+            (visit) => formatDateToKST_YYYYMMDD(visit.date) === formattedCurrentDate
+          );
+          filledResult.push({
+            date: formattedCurrentDate,
+            views: foundVisit ? foundVisit.views : 0,
+            uniqueVisitors: foundVisit ? foundVisit.uniqueVisitors : 0,
+          });
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        resultData = filledResult;
+      } else if (!isTotalQueryForFallback && daysParam && parseInt(daysParam, 10) > 0) {
+        const numDaysToFill = parseInt(daysParam, 10);
+        const todayKSTString = formatDateToKST_YYYYMMDD(new Date());
+        const kstCurrentDay = getDateAtKSTMIdnight(todayKSTString);
+        const filledResult = [];
+
+        for (let i = 0; i < numDaysToFill; i++) {
+          const targetKstDate = new Date(kstCurrentDay);
+          targetKstDate.setDate(kstCurrentDay.getDate() - (numDaysToFill - 1) + i);
           const formattedTargetKstDate = formatDateToKST_YYYYMMDD(targetKstDate);
 
           const foundVisit = dailyVisits.find(
-            (visit) => {
-              return formatDateToKST_YYYYMMDD(visit.date) === formattedTargetKstDate;
-            }
+            (visit) => formatDateToKST_YYYYMMDD(visit.date) === formattedTargetKstDate
           );
-
           filledResult.push({
             date: formattedTargetKstDate,
             views: foundVisit ? foundVisit.views : 0,
@@ -228,13 +256,11 @@ export async function GET(request: NextRequest) {
         }
         resultData = filledResult;
       } else {
-        resultData = dailyVisits.map(visit => {
-          return {
-            date: formatDateToKST_YYYYMMDD(visit.date),
-            views: visit.views,
-            uniqueVisitors: visit.uniqueVisitors,
-          };
-        });
+        resultData = dailyVisits.map(visit => ({
+          date: formatDateToKST_YYYYMMDD(visit.date),
+          views: visit.views,
+          uniqueVisitors: visit.uniqueVisitors,
+        }));
       }
 
       return NextResponse.json({

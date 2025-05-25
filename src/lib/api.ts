@@ -113,11 +113,12 @@ export const fetchDashboardVisits = async (): Promise<ApiResponse<VisitData[]>> 
 
 /**
  * 차트용 방문자 통계를 가져오며, 선택적으로 기간 필터링 및 IP 포함 여부를 설정할 수 있습니다.
- * @param days 데이터를 가져올 지난 일수.
+ * @param startDate 필터링 시작 날짜 (YYYY-MM-DD).
+ * @param endDate 필터링 종료 날짜 (YYYY-MM-DD).
  * @param includeLocalIps 로컬 IP의 방문을 포함할지 여부.
  */
-export const fetchChartVisits = async (days?: number, includeLocalIps?: boolean): Promise<ApiResponse<VisitData[]>> => {
-  const queryParams = buildQueryString({ days, includeLocalIps });
+export const fetchChartVisits = async (startDate?: string, endDate?: string, includeLocalIps?: boolean): Promise<ApiResponse<VisitData[]>> => {
+  const queryParams = buildQueryString({ startDate, endDate, includeLocalIps });
   const response = await apiClient.get<ApiResponse<VisitData[]>>(`/visits${queryParams}`);
   return response.data;
 };

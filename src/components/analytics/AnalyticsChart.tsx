@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { fetchChartVisits } from "@/lib/api"
 import LoadingSpinner from "@/components/ui/LoadingSpinner"
-import { differenceInDays, format } from 'date-fns';
+import { format } from 'date-fns';
 import { useMemo, useState } from "react"
 import { ko } from "date-fns/locale"
 import { useAnalyticsStore } from "@/store/analyticsStore"
@@ -56,18 +56,21 @@ export function AnalyticsChart() {
 
   const [chartType, setChartType] = useState<"area" | "bar">("bar")
 
-  const days = useMemo(() => {
-    if (startDate && endDate) {
-      return differenceInDays(endDate, startDate) + 1;
-    }
-
-    return startDate && endDate ? differenceInDays(endDate, startDate) + 1 : 0;
-  }, [startDate, endDate])
+  const formatDateToYYYYMMDD = (date: Date | undefined): string | undefined => {
+    return date ? format(date, "yyyy-MM-dd") : undefined;
+  };
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["visits", startDate, endDate, includeLocal],
-    queryFn: () => fetchChartVisits(days, includeLocal),
-    enabled: !!startDate && !!endDate && days > 0,
+    queryKey: ["visits", formatDateToYYYYMMDD(startDate), formatDateToYYYYMMDD(endDate), includeLocal],
+    queryFn: () => {
+      const formattedStartDate = formatDateToYYYYMMDD(startDate);
+      const formattedEndDate = formatDateToYYYYMMDD(endDate);
+      if (formattedStartDate && formattedEndDate) {
+        return fetchChartVisits(formattedStartDate, formattedEndDate, includeLocal);
+      }
+      return Promise.resolve(null);
+    },
+    enabled: !!startDate && !!endDate,
   })
 
   const chartData = useMemo(() => {
@@ -197,7 +200,7 @@ export function AnalyticsChart() {
                   tickMargin={10}
                   minTickGap={32}
                   tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString("en-US", {
+                    new Date(value).toLocaleDateString("ko-KR", {
                       month: "short",
                       day: "numeric",
                     })
