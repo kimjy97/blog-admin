@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest) {
     await connectDB();
     const id = extractIdFromRequest(request);
     const body = await request.json();
-    const { content, nickname, isEdited, isShow } = body as Partial<Omit<IComment, 'password' | 'userIp' | 'postId'>>;
+    const { content, nickname, isShow } = body as Partial<Omit<IComment, 'password' | 'userIp' | 'postId'>>;
 
     if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
       return NextResponse.json({ success: false, error: '유효하지 않은 ID 형식입니다.' }, { status: 400 });
@@ -52,15 +52,14 @@ export async function PUT(request: NextRequest) {
     const updateData: Partial<IComment> = {};
     if (content !== undefined) updateData.content = content;
     if (nickname !== undefined) updateData.nickname = nickname;
-    if (isEdited !== undefined) updateData.isEdited = isEdited;
     if (isShow !== undefined) updateData.isShow = isShow;
 
-    if (content !== undefined) {
-      updateData.isEdited = true;
-    }
     if (body.isEdited !== undefined) {
       updateData.isEdited = body.isEdited;
+    } else if (content !== undefined && content !== (originalComment as unknown as IComment).content) {
+      updateData.isEdited = true;
     }
+
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ success: false, error: '업데이트할 내용이 없습니다.' }, { status: 400 });

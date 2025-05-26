@@ -10,6 +10,8 @@ interface HeaderActionProps {
 
 export default function HeaderActions({ type }: HeaderActionProps) {
   const { editorRef } = usePostEditContext();
+
   if (type === 'new') return <PostNewHeaderAction editorRef={editorRef} />
   if (type === 'edit') return <PostEditHeaderAction editorRef={editorRef} />;
+  return null;
 }

@@ -5,15 +5,20 @@ import { IPost } from "@/models/Post";
 import PostEditorForm from "./PostEditorForm";
 import PostEditorPreview from "@/components/post/PostEditor/PostEditorPreview";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchPostById, fetchPostsForTags, updatePost } from "@/lib/api";
+import { createPost, fetchPostById, fetchPostsForTags, updatePost } from "@/lib/api";
 import { useParams, useRouter } from "next/navigation";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export interface PostEditorHandle {
-  submit: () => void;
+  submit: () => Promise<IPost | void>;
 }
 
-const PostEditor = forwardRef<PostEditorHandle>(({
+export interface PostEditorProps {
+  isNewPost?: boolean;
+}
+
+const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(({
+  isNewPost = false
 }, ref) => {
   const [postData, setPostData] = useState<Partial<IPost>>({});
   const queryClient = useQueryClient();
@@ -23,37 +28,48 @@ const PostEditor = forwardRef<PostEditorHandle>(({
 
   const {
     data: initialData,
-    isLoading,
+    isLoading: isLoadingPost,
     error: queryError,
   } = useQuery<IPost, Error>({
     queryKey: ["post", id],
     queryFn: () => fetchPostById(id),
-    enabled: !!id,
+    enabled: !!id && !isNewPost,
   });
 
-  const mutation = useMutation({
-    mutationFn: (postData: Partial<IPost>) => updatePost({ id, data: postData }),
+  const mutation = useMutation<IPost, Error, Partial<IPost>>({
+    mutationFn: async (currentPostData: Partial<IPost>) => {
+      if (isNewPost) {
+        return createPost(currentPostData);
+      } else {
+        if (!id) {
+          console.error("Post ID is missing for update operation.");
+          throw new Error("게시글 ID가 없어 업데이트할 수 없습니다.");
+        }
+        return updatePost({ id, data: currentPostData });
+      }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["post", id] });
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      if (!isNewPost && id) {
+        queryClient.invalidateQueries({ queryKey: ["post", id] });
+      }
       router.push("/dashboard/posts");
     },
     onError: (err: Error) => {
-      console.error("게시글 수정 실패:", err);
-      alert(`게시글 수정 중 오류가 발생했습니다: ${err.message}`);
+      console.error(isNewPost ? "게시글 작성 실패:" : "게시글 수정 실패:", err);
     },
   });
 
-  const { data: posts, isLoading: isLoadingPosts, error: postsError } = useQuery({
+  const { data: postsForTags, isLoading: isLoadingPostsForTags, error: postsError } = useQuery({
     queryKey: ["allPostsForTags"],
     queryFn: fetchPostsForTags,
     staleTime: 1000 * 60 * 5,
   });
 
-  const existingTags = posts
+  const existingTags = postsForTags
     ? Array.from(
       new Set(
-        posts
+        postsForTags
           ?.map((post) => (post.tags && post.tags.length > 0 ? post.tags[0] : null))
           .filter(Boolean) as string[]
       )
@@ -61,14 +77,23 @@ const PostEditor = forwardRef<PostEditorHandle>(({
     : [];
 
   useEffect(() => {
-    if (initialData) {
+    if (isNewPost) {
+      setPostData({
+        title: '',
+        description: '',
+        content: '',
+        name: '',
+        tags: [],
+        status: false,
+      });
+    } else if (initialData) {
       setPostData(initialData);
     }
-  }, [initialData]);
+  }, [initialData, isNewPost]);
 
   useImperativeHandle(ref, () => ({
-    submit: () => {
-      handleEditorSubmit(postData);
+    submit: async () => {
+      return handleEditorSubmit(postData);
     }
   }));
 
@@ -76,11 +101,17 @@ const PostEditor = forwardRef<PostEditorHandle>(({
     setPostData(prevData => ({ ...prevData, ...data }));
   };
 
-  const handleEditorSubmit = async (postData: Partial<IPost>) => {
-    mutation.mutate(postData);
+  const handleEditorSubmit = async (currentPostData: Partial<IPost>) => {
+    if (isNewPost) {
+      if (!currentPostData.title || currentPostData.title.trim() === '' || !currentPostData.content || currentPostData.content.trim() === '') {
+        alert("제목과 내용은 필수입니다.");
+        throw new Error("제목과 내용은 필수입니다.");
+      }
+    }
+    return mutation.mutateAsync(currentPostData);
   };
 
-  if (isLoading || isLoadingPosts) {
+  if ((!isNewPost && isLoadingPost) || isLoadingPostsForTags) {
     return (
       <div className="flex justify-center items-center h-64">
         <LoadingSpinner />
@@ -88,7 +119,7 @@ const PostEditor = forwardRef<PostEditorHandle>(({
     );
   }
 
-  if (queryError) {
+  if (!isNewPost && queryError) {
     return (
       <div className="flex justify-center items-center h-64">
         <p className="text-red-500">Error loading post data: {queryError.message}</p>
@@ -108,7 +139,7 @@ const PostEditor = forwardRef<PostEditorHandle>(({
     <div className="flex gap-8 w-full pb-20">
       <div className="w-full pt-0 lg:w-1/2">
         <PostEditorForm
-          initialData={initialData}
+          initialData={isNewPost ? postData : initialData}
           onDataChange={handleDataChange}
           isSubmitting={mutation.isPending}
           existingTags={existingTags}

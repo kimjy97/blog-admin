@@ -1,7 +1,7 @@
 import PageLayout from "@/components/layout/PageLayout";
-import PostNewHeaderAction from "@/components/post/PostNewHeaderAction";
-import EditorContent from "@/components/post/EditorContent";
-import { PostEditContextProvider } from "@/contexts/PostEditContext";
+import HeaderActions from "@/components/post/HeaderActions";
+import EditorContent from '@/components/post/EditorContent';
+import { PostEditContextProvider } from '@/contexts/PostEditContext';
 
 export default function NewPostPage() {
   return (
@@ -9,10 +9,10 @@ export default function NewPostPage() {
       <PostEditContextProvider>
         <PageLayout.Header
           title="게시글 작성"
-          actions={<PostNewHeaderAction type='new' />}
+          actions={<HeaderActions type='new' />}
         />
         <PageLayout.Content>
-          <EditorContent />
+          <EditorContent isNewPost={true} />
         </PageLayout.Content>
       </PostEditContextProvider>
     </PageLayout>

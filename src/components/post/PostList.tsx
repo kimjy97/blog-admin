@@ -112,7 +112,6 @@ export default function PostList({
   }, {} as Record<string, IPost[]>);
 
   const sortedGroups = Object.keys(groupedPosts).sort((a, b) => b.localeCompare(a));
-  console.log(sortedGroups);
 
   const isDeletingPostChecker = (postId: string) => {
     return deletePostMutation.isPending && deletePostMutation.variables === postId;

@@ -226,10 +226,18 @@ export async function GET(request: NextRequest) {
           const foundVisit = dailyVisits.find(
             (visit) => formatDateToKST_YYYYMMDD(visit.date) === formattedCurrentDate
           );
+          const dateForIso = getDateAtKSTMIdnight(formattedCurrentDate);
           filledResult.push({
+            _id: formattedCurrentDate,
             date: formattedCurrentDate,
             views: foundVisit ? foundVisit.views : 0,
+            visitors: foundVisit ? foundVisit.uniqueVisitors : 0,
+            pageviews: foundVisit ? foundVisit.views : 0,
             uniqueVisitors: foundVisit ? foundVisit.uniqueVisitors : 0,
+            bounceRate: 0,
+            avgVisitDuration: 0,
+            createdAt: dateForIso.toISOString(),
+            updatedAt: dateForIso.toISOString(),
           });
           currentDate.setDate(currentDate.getDate() + 1);
         }
@@ -248,19 +256,37 @@ export async function GET(request: NextRequest) {
           const foundVisit = dailyVisits.find(
             (visit) => formatDateToKST_YYYYMMDD(visit.date) === formattedTargetKstDate
           );
+          const dateForIso = getDateAtKSTMIdnight(formattedTargetKstDate);
           filledResult.push({
+            _id: formattedTargetKstDate,
             date: formattedTargetKstDate,
             views: foundVisit ? foundVisit.views : 0,
+            visitors: foundVisit ? foundVisit.uniqueVisitors : 0,
+            pageviews: foundVisit ? foundVisit.views : 0,
             uniqueVisitors: foundVisit ? foundVisit.uniqueVisitors : 0,
+            bounceRate: 0,
+            avgVisitDuration: 0,
+            createdAt: dateForIso.toISOString(),
+            updatedAt: dateForIso.toISOString(),
           });
         }
         resultData = filledResult;
       } else {
-        resultData = dailyVisits.map(visit => ({
-          date: formatDateToKST_YYYYMMDD(visit.date),
-          views: visit.views,
-          uniqueVisitors: visit.uniqueVisitors,
-        }));
+        resultData = dailyVisits.map(visit => {
+          const formattedDate = formatDateToKST_YYYYMMDD(visit.date);
+          return {
+            _id: formattedDate,
+            date: formattedDate,
+            views: visit.views,
+            visitors: visit.uniqueVisitors,
+            pageviews: visit.views,
+            uniqueVisitors: visit.uniqueVisitors,
+            bounceRate: 0,
+            avgVisitDuration: 0,
+            createdAt: visit.date.toISOString(),
+            updatedAt: visit.date.toISOString(),
+          };
+        });
       }
 
       return NextResponse.json({

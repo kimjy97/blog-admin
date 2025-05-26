@@ -3,7 +3,9 @@
 import PostEditor from '@/components/post/PostEditor/PostEditor';
 import { usePostEditContext } from '@/contexts/PostEditContext';
 
-export default function EditorContent() {
+const EditorContent = ({ isNewPost }: { isNewPost?: boolean }) => {
   const { editorRef } = usePostEditContext();
-  return <PostEditor ref={editorRef} />;
+  return <PostEditor ref={editorRef} isNewPost={isNewPost} />;
 }
+
+export default EditorContent;

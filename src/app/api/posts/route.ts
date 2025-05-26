@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     });
 
     await newPost.save();
-    return NextResponse.json({ success: true, data: newPost }, { status: 201 });
+    return NextResponse.json({ success: true, post: newPost }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
