@@ -14,11 +14,13 @@ import { fetchRecentVisitLogs, VisitLogData } from "@/lib/api"
 import { formatDate } from "@/utils/formatDate"
 import { isLocalIp } from "@/utils/isLocalIp"
 import { getBrowserName } from "@/utils/getBrowserName"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useVisitorsLogStore } from "@/store/visitorsLogStore"
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline"
 
 export function VisitorsLogTable({ className }: React.HTMLAttributes<HTMLDivElement>) {
   const { dateRange, includeLocal, ipSearch } = useVisitorsLogStore();
+  const [hideIp, setHideIp] = useState(false);
 
   const {
     data: visitLogsResponse,
@@ -77,7 +79,21 @@ export function VisitorsLogTable({ className }: React.HTMLAttributes<HTMLDivElem
             <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead className="w-[280px] font-bold px-2">날짜</TableHead>
-                <TableHead className="w-[280px] font-bold px-2">IP 주소</TableHead>
+                <TableHead className="w-[280px] font-bold px-2 flex items-center gap-1">
+                  IP 주소
+                  <button
+                    type="button"
+                    onClick={() => setHideIp(prev => !prev)}
+                    className="ml-1 p-1 rounded-md hover:bg-foreground/10 cursor-pointer"
+                    title={hideIp ? "IP 주소 보이기" : "IP 주소 가리기"}
+                  >
+                    {hideIp ? (
+                      <EyeSlashIcon className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <EyeIcon className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </TableHead>
                 <TableHead className="w-[150px] font-bold px-2">경로</TableHead>
                 <TableHead className="font-bold px-2">브라우저</TableHead>
               </TableRow>
@@ -91,7 +107,7 @@ export function VisitorsLogTable({ className }: React.HTMLAttributes<HTMLDivElem
                   )}
                 >
                   <TableCell className="px-2">{formatDate(log.date)}</TableCell>
-                  <TableCell className="px-2">{log.ip}</TableCell>
+                  <TableCell className="px-2">{hideIp ? '***.***.***.***' : log.ip}</TableCell>
                   <TableCell className="truncate max-w-[200px] sm:max-w-none px-2">{log.pathname}</TableCell>
                   <TableCell className="truncate max-w-[200px] sm:max-w-none px-2">
                     {getBrowserName(log.userAgent)}

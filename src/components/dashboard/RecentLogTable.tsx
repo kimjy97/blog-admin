@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { UserGroupIcon, ArrowRightIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
+import { UserGroupIcon, ArrowRightIcon, ArrowsRightLeftIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRecentVisitLogs, VisitLogData } from "@/lib/api";
@@ -22,6 +22,7 @@ export default function RecentLogTable() {
   const router = useRouter();
   const [showContent, setShowContent] = useState(false);
   const [timeFormat, setTimeFormat] = useState<'absolute' | 'relative'>('absolute');
+  const [hideIp, setHideIp] = useState(false);
 
   const {
     data: logsResponse,
@@ -100,7 +101,21 @@ export default function RecentLogTable() {
                 <table className="min-w-full w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-card">
                     <tr className="text-muted-foreground text-sm text-left">
-                      <th className="px-2 py-1 font-semibold">IP</th>
+                      <th className="px-2 py-1 font-semibold flex items-center gap-1">
+                        IP
+                        <button
+                          type="button"
+                          onClick={() => setHideIp(prev => !prev)}
+                          className="ml-1 p-1 rounded-md hover:bg-foreground/10 cursor-pointer"
+                          title={hideIp ? "IP 주소 보이기" : "IP 주소 가리기"}
+                        >
+                          {hideIp ? (
+                            <EyeSlashIcon className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <EyeIcon className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </button>
+                      </th>
                       <th className="px-2 py-1 font-semibold">브라우저</th>
                       <th className="px-2 py-1 font-semibold">경로</th>
                       <th
@@ -120,7 +135,7 @@ export default function RecentLogTable() {
                         className={`hover:bg-foreground/5 border-b border-border last:border-b-0 rounded-lg ${isLocalIp(log.ip) ? 'text-muted-foreground' : ''}`}
                       >
                         <td className='px-2 py-2 font-mono text-xs whitespace-nowrap'>
-                          {log.ip}
+                          {hideIp ? '***.***.***.***' : log.ip}
                         </td>
                         <td className="px-2 py-2 text-xs whitespace-nowrap">{getBrowserName(log.userAgent)}</td>
                         <td className="px-2 py-2 text-xs whitespace-nowrap">{log.pathname}</td>
