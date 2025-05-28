@@ -36,7 +36,7 @@ export default function PostItem({
             <span className='text-muted-foreground font-normal'>{post.status ? '' : '[임시저장] '}</span>{post.title}
           </CardTitle>
           <div className="text-xs text-muted-foreground mt-2">
-            {formatDate(post.updatedAt || post.createdAt)} · {post.name}
+            {formatDate(post.createdAt || post.updatedAt)} · {post.name}
           </div>
         </CardHeader>
         <CardContent className="flex-grow mb-2 px-5">

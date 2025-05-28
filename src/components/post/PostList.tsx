@@ -99,7 +99,7 @@ export default function PostList({
   }
 
   const groupedPosts = filteredPosts.reduce((acc, post) => {
-    const date = new Date(post.updatedAt || post.createdAt);
+    const date = new Date(post.createdAt || post.updatedAt);
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const yearMonth = `${year}. ${month.toString().padStart(2, '0')}`;
@@ -128,7 +128,7 @@ export default function PostList({
           <div key={yearMonth} className="mb-8">
             <div className='flex flex-row items-center gap-6 mb-8'>
               <div className="flex-1 h-[1px] bg-border" />
-              <h2 className="text-base text-muted-foreground">{yearMonth}</h2>
+              <h3 className="text-base text-muted-foreground">{yearMonth}</h3>
               <div className="flex-1 h-[1px] bg-border" />
             </div>
             <div className="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

@@ -38,7 +38,7 @@ const PostEditorPreview: React.FC<PostEditorPreviewProps> = ({ postData }) => {
         <h1 className="text-3xl font-bold mb-4">
           <span className='text-accent'>{postData.tags ? postData.tags[0] : ""} </span>{postData.title || ""}
         </h1>
-        {(postData.updatedAt || postData.createdAt) && <p className='text-sm mb-6'>{formatDate(postData.updatedAt || postData.createdAt)}</p>}
+        {(postData.createdAt || postData.updatedAt) && <p className='text-sm mb-6'>{formatDate(postData.createdAt || postData.updatedAt)}</p>}
         <div className='flex gap-2 flex-wrap mb-8'>
           {postData.tags?.map((tag) => (
             <span className="text-sm rounded-sm bg-primary px-2" key={tag}>

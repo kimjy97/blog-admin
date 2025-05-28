@@ -187,7 +187,7 @@ export const fetchPostsForDashboard = async (): Promise<{ totalPosts: number; dr
  * @param limit 가져올 최대 게시물 수.
  */
 export const fetchRecentPosts = async (limit: number = 5): Promise<ApiResponse<IPost[]>> => {
-  const queryParams = buildQueryString({ sort: '-updatedAt', limit });
+  const queryParams = buildQueryString({ sort: '-createdAt', limit });
   const response = await apiClient.get<ApiResponse<IPost[]>>(`/posts${queryParams}`);
   return response.data;
 };

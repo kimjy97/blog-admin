@@ -90,9 +90,8 @@ export default function RecentPostList() {
                       <Link href={`/dashboard/posts/${post._id}`} passHref>
                         <div className="font-medium truncate cursor-pointer hover:underline">{post.title}</div>
                       </Link>
-                      <div className="text-xs text-muted-foreground mt-1">{formatDate(post.updatedAt || post.createdAt)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{formatDate(post.createdAt || post.updatedAt)}</div>
                       <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                        {/* PostData에 view, like, cmtnum 필드가 없으므로, 있다면 추가하거나 주석 처리 */}
                         <span className="flex items-center gap-1">
                           <EyeIcon className="w-4 h-4" />
                           {post.view || 0}
