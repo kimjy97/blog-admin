@@ -34,7 +34,7 @@ const Header = ({ title, actions, children }: PageHeaderProps) => {
 
 const Content = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="flex flex-col px-4 md:px-10 pb-10">
+    <div className="flex flex-col px-4 md:px-10 pb-40 sm:pb-30">
       {children}
     </div>
   );

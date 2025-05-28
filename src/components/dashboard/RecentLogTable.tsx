@@ -101,7 +101,7 @@ export default function RecentLogTable() {
                 <table className="min-w-full w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-card">
                     <tr className="text-muted-foreground text-sm text-left">
-                      <th className="px-2 py-1 font-semibold flex items-center gap-1">
+                      <th className="px-2 py-1 font-semibold flex items-center gap-1 whitespace-nowrap">
                         IP
                         <button
                           type="button"
@@ -116,10 +116,10 @@ export default function RecentLogTable() {
                           )}
                         </button>
                       </th>
-                      <th className="px-2 py-1 font-semibold">브라우저</th>
-                      <th className="px-2 py-1 font-semibold">경로</th>
+                      <th className="px-2 py-1 font-semibold whitespace-nowrap">브라우저</th>
+                      <th className="px-2 py-1 font-semibold whitespace-nowrap">경로</th>
                       <th
-                        className="px-2 py-1 font-semibold cursor-pointer hover:text-foreground transition-colors flex items-center gap-1"
+                        className="px-2 py-1 font-semibold cursor-pointer hover:text-foreground flex items-center gap-1 whitespace-nowrap"
                         onClick={toggleTimeFormat}
                         title="클릭하여 시간 표시 형식 변경"
                       >

@@ -59,6 +59,7 @@ const AnalyticsControlHeader = () => {
             selected={dateRange}
             onSelect={setDateRange}
             numberOfMonths={2}
+            toDate={new Date()}
           />
         </PopoverContent>
       </Popover>

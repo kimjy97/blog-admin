@@ -67,6 +67,7 @@ const VisitorsLogControlHeader = () => {
               selected={dateRange}
               onSelect={setDateRange}
               numberOfMonths={2}
+              toDate={new Date()}
             />
           </PopoverContent>
         </Popover>
