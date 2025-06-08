@@ -13,3 +13,23 @@ export const formatDate = (dateString?: string | Date | null): string => {
   const hoursStr = hours.toString().padStart(2, '0');
   return `${year}. ${month}. ${day} ${ampm} ${hoursStr}:${minutes}`;
 };
+
+export const getISODateString = (date: Date | undefined): string | undefined => {
+  return date ? date.toISOString() : undefined;
+};
+
+export const getDateAtMidnightUTC = (dateString: string): Date | null => {
+  try {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const midnight = new Date(Date.UTC(year, month - 1, day));
+
+    if (isNaN(midnight.getTime())) {
+      console.warn(`Invalid Date for "${dateString}" in getDateAtMidnightUTC.`);
+      return null;
+    }
+    return midnight;
+  } catch (error) {
+    console.warn(`An error occurred in getDateAtMidnightUTC for "${dateString}".`, error);
+    return null;
+  }
+}

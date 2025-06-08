@@ -5,6 +5,7 @@ export interface IVisit extends Document {
   pathname: string;
   date: Date;
   userAgent?: string;
+  referrer?: string;
 }
 
 const VisitSchema: Schema = new Schema(
@@ -23,6 +24,7 @@ const VisitSchema: Schema = new Schema(
       default: Date.now,
     },
     userAgent: String,
+    referrer: String,
   },
   {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },

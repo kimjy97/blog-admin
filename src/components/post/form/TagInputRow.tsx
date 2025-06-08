@@ -68,7 +68,7 @@ const TagInputRow = ({
               className="w-60"
             />
           </PopoverTrigger>
-          <PopoverContent className="w-[--radix-popover-trigger-width] p-0"> {/* PopoverContent 스타일 조정 */}
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
             <Command>
               <CommandInput placeholder="태그 검색..." value={currentTag} onValueChange={(value: string) => {
                 onCurrentTagChange({ target: { value: value } } as React.ChangeEvent<HTMLInputElement>);

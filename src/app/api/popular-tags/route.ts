@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Post from '@/models/Post';
 import { connectDB } from '@/lib/db';
-
-function getDateAtKSTMIdnight(dateString: string): Date {
-  return new Date(`${dateString}T00:00:00+09:00`);
-}
+import { getDateAtMidnightUTC } from '@/utils/formatDate';
 
 export async function GET(req: NextRequest) {
   await connectDB();
@@ -20,21 +17,29 @@ export async function GET(req: NextRequest) {
 
   if (startDateParam && endDateParam) {
     try {
-      const startDate = getDateAtKSTMIdnight(startDateParam);
-      const endDate = getDateAtKSTMIdnight(endDateParam);
+      const cleanStartDateParam = startDateParam.split('T')[0];
+      const cleanEndDateParam = endDateParam.split('T')[0];
 
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        return NextResponse.json({ success: false, message: 'Invalid date format for startDate or endDate. Please use YYYY-MM-DD.' }, { status: 400 });
+      const startDate = getDateAtMidnightUTC(cleanStartDateParam);
+      const endDate = getDateAtMidnightUTC(cleanEndDateParam);
+
+      if (!startDate || !endDate) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid startDate or endDate provided. Please use a valid date string (e.g., YYYY-MM-DD).' },
+          { status: 400 }
+        );
       }
 
-      endDate.setHours(23, 59, 59, 999);
+      const endOfDayUTC = new Date(endDate);
+      endOfDayUTC.setUTCHours(23, 59, 59, 999);
 
       matchQuery.createdAt = {
         $gte: startDate,
-        $lte: endDate,
+        $lte: endOfDayUTC,
       };
-    } catch {
-      return NextResponse.json({ success: false, message: 'Error processing date parameters.' }, { status: 400 });
+    } catch (error) {
+      console.error('Error processing date parameters for UTC conversion:', error);
+      return NextResponse.json({ success: false, message: 'Error processing date parameters. Please ensure they are valid date strings.' }, { status: 400 });
     }
   } else if (startDateParam || endDateParam) {
     return NextResponse.json({ success: false, message: 'Both startDate and endDate are required for date filtering, or neither to get all tags.' }, { status: 400 });

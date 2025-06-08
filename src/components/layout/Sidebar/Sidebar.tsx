@@ -108,7 +108,6 @@ export default function Sidebar() {
 
       {/* xl 이상: 전체 사이드바 (아이콘+텍스트) */}
       <aside className="hidden xl:flex flex-col w-60 border-r bg-sidebar p-0 pt-1 min-h-screen">
-        {/* 로고 */}
         <div className="hidden items-center gap-2 md:flex p-3">
           <span className="inline-flex items-center bg-background justify-center w-10 h-10 rounded-lg text-accent-foreground">
             <WrenchScrewdriverIcon className="w-5 h-5 text-red-400" aria-hidden />

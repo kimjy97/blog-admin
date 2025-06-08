@@ -134,8 +134,7 @@ const PostComments = ({ postId }: { postId: number | null }) => {
                     <p className="text-sm text-muted-foreground">{new Date(comment.createdAt).toLocaleDateString()}</p>
                   </div>
                   <p>{comment.content}</p>
-                  <div className="flex justify-between mt-2"> {/* isEdited, isShow 토글 버튼 */}
-                    {/* isEdited 토글 */}
+                  <div className="flex justify-between mt-2">
                     <div className='flex gap-4'>
                       <div className="flex items-center space-x-2 cursor-pointer">
                         <Checkbox

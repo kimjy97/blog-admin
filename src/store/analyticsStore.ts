@@ -11,14 +11,30 @@ interface AnalyticsState {
   setIncludeLocal: (includeLocal: boolean) => void;
 }
 
-const initialFromDate = addDays(new Date(), -30);
-const initialToDate = new Date();
+const initialFromDate = (() => {
+  const date = addDays(new Date(), -30);
+  date.setHours(0, 0, 0, 0);
+  return date;
+})();
+const initialToDate = (() => {
+  const date = new Date();
+  date.setHours(23, 59, 59, 999);
+  return date;
+})();
 
 export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   dateRange: { from: initialFromDate, to: initialToDate },
   dataType: "전체 방문자",
   includeLocal: false,
-  setDateRange: (newDateRange) => set({ dateRange: newDateRange }),
+  setDateRange: (newDateRange) => {
+    if (newDateRange?.from) {
+      newDateRange.from.setHours(0, 0, 0, 0);
+    }
+    if (newDateRange?.to) {
+      newDateRange.to.setHours(23, 59, 59, 999);
+    }
+    set({ dateRange: newDateRange });
+  },
   setDataType: (newDataType) => set({ dataType: newDataType }),
   setIncludeLocal: (newIncludeLocal) => set({ includeLocal: newIncludeLocal }),
 }));

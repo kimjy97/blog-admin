@@ -1,85 +1,132 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
-import Visit from '@/models/Visit';
+import Visit, { IVisit } from '@/models/Visit';
+import { getDateAtMidnightUTC } from '@/utils/formatDate';
 
-function formatDateToKST_YYYYMMDD(dateObj: Date): string {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  return formatter.format(dateObj);
+interface LeanVisit extends IVisit {
+  _id: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-function getDateAtKSTMIdnight(dateString: string): Date {
-  return new Date(`${dateString}T00:00:00+09:00`);
+const VISIT_TYPES = {
+  STATS: 'stats',
+  LOGS: 'logs',
+  PATHNAME_STATS: 'pathname-stats',
+  CHART_STATS: 'chart-stats',
+};
+
+const LOCAL_IPS = ['127.0.0.1', 'localhost', '::1'];
+
+const formatDateToYYYYMMDD = (dateObj: Date): string => {
+  const year = dateObj.getFullYear();
+  const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+  const day = dateObj.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
+const buildCommonMatchConditions = (searchParams: URLSearchParams): any => {
+  const matchConditions: any = {};
+  const startDateParam = searchParams.get('startDate');
+  const endDateParam = searchParams.get('endDate');
+  const includeLocalIpsParam = searchParams.get('includeLocalIps') || 'false';
+  const includeLocalIps = includeLocalIpsParam !== 'false';
+
+  if (!includeLocalIps) {
+    matchConditions.ip = {
+      $nin: LOCAL_IPS,
+    };
+  }
+
+  if (startDateParam && endDateParam) {
+    const cleanStartDateParam = startDateParam.split('T')[0];
+    const cleanEndDateParam = endDateParam.split('T')[0];
+
+    const startDate = getDateAtMidnightUTC(cleanStartDateParam);
+    const endDate = getDateAtMidnightUTC(cleanEndDateParam);
+
+    if (startDate && endDate) {
+      const endOfDayUTC = new Date(endDate);
+      endOfDayUTC.setUTCHours(23, 59, 59, 999);
+
+      matchConditions.date = {
+        $gte: startDate,
+        $lte: endOfDayUTC,
+      };
+    }
+  }
+  return matchConditions;
+}
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type') || 'stats';
+
+    const type = searchParams.get('type');
     const daysParam = searchParams.get('days');
     const pathnamePattern = searchParams.get('pathname');
     const limit = parseInt(searchParams.get('limit') || '1000', 10);
     const sort = searchParams.get('sort') || '-date';
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
-    const includeLocalIpsParam = searchParams.get('includeLocalIps') || 'false';
 
-    const includeLocalIps = includeLocalIpsParam !== 'false';
+    if (!type && !daysParam && !pathnamePattern && !startDateParam && !endDateParam) {
+      const totalViews = await Visit.countDocuments({});
 
-    if (type === 'logs') {
-      const query: any = {};
-      if (pathnamePattern) query.pathname = { $regex: pathnamePattern, $options: 'i' };
+      const todayString = formatDateToYYYYMMDD(new Date());
+      const startOfTodayUTC = getDateAtMidnightUTC(todayString);
 
-      if (startDateParam && endDateParam) {
-        const startDateKST = getDateAtKSTMIdnight(startDateParam);
+      let todayViewsIncrement = 0;
+      if (startOfTodayUTC) {
+        const endOfTodayUTC = new Date(startOfTodayUTC);
+        endOfTodayUTC.setUTCHours(23, 59, 59, 999);
 
-        const endDateKST = getDateAtKSTMIdnight(endDateParam);
-        endDateKST.setHours(23, 59, 59, 999);
-
-        query.date = {
-          $gte: startDateKST,
-          $lte: endDateKST,
-        };
+        todayViewsIncrement = await Visit.countDocuments({
+          date: {
+            $gte: startOfTodayUTC,
+            $lte: endOfTodayUTC,
+          }
+        });
       }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          totalViews: totalViews,
+          todayViewsIncrement: todayViewsIncrement,
+        }
+      });
+    }
+
+    const commonMatchConditions = buildCommonMatchConditions(searchParams);
+
+    if (type === VISIT_TYPES.LOGS) {
+      const query: any = { ...commonMatchConditions };
+      if (pathnamePattern) query.pathname = { $regex: pathnamePattern, $options: 'i' };
 
       const logs = await Visit.find(query)
         .sort(sort)
         .limit(limit)
         .lean();
 
+      const formattedLogs = logs.map(log => ({
+        ...log,
+        date: log.date ? log.date.toISOString() : null,
+        createdAt: log.createdAt ? log.createdAt.toISOString() : null,
+        updatedAt: log.updatedAt ? log.updatedAt.toISOString() : null,
+      }));
+
       return NextResponse.json({
         success: true,
-        data: logs,
+        data: formattedLogs,
       });
 
-    } else if (type === 'pathname-stats') {
+    } else if (type === VISIT_TYPES.PATHNAME_STATS) {
       const matchConditions: any = {
-        pathname: { $in: ['/', '/post', '/chat', 'other'] },
+        ...commonMatchConditions,
+        ...(pathnamePattern ? { pathname: pathnamePattern } : { pathname: { $in: ['/', '/post', '/chat', 'other'] } }),
       };
-
-      if (!includeLocalIps) {
-        matchConditions.ip = {
-          $nin: ['127.0.0.1', 'localhost', '::1'],
-        };
-      }
-
-      if (startDateParam && endDateParam) {
-        const startDateKST = getDateAtKSTMIdnight(startDateParam);
-
-        const endDateKST = getDateAtKSTMIdnight(endDateParam);
-        endDateKST.setHours(23, 59, 59, 999);
-
-        matchConditions.date = {
-          $gte: startDateKST,
-          $lte: endDateKST,
-        };
-      }
 
       const pathnameStats = await Visit.aggregate([
         {
@@ -120,182 +167,59 @@ export async function GET(request: NextRequest) {
         data: resultData,
       });
 
-    } else {
-      const matchConditions: any = {};
+    } else if (type === VISIT_TYPES.CHART_STATS) {
+      const visits = await Visit.find(commonMatchConditions)
+        .sort({ date: 1 })
+        .lean() as unknown as LeanVisit[];
 
-      if (!includeLocalIps) {
-        matchConditions.ip = {
-          $nin: ['127.0.0.1', 'localhost', '::1'],
+      const dailyUniqueIps: { [key: string]: Set<string> } = {};
+      const formattedVisits = visits.map(visit => {
+        const visitDate = visit.date ? new Date(visit.date) : null;
+        const dateKey = visitDate ? formatDateToYYYYMMDD(visitDate) : 'unknown';
+
+        if (!dailyUniqueIps[dateKey]) {
+          dailyUniqueIps[dateKey] = new Set();
+        }
+
+        const isUnique = !dailyUniqueIps[dateKey].has(visit.ip);
+        dailyUniqueIps[dateKey].add(visit.ip);
+
+        return {
+          date: visitDate ? visitDate.toISOString() : null,
+          isUnique: isUnique,
         };
-      }
-
-      let useDateRangeFilter = false;
-      let isTotalQueryForFallback = false;
-      let daysForFallback = 7;
-
-      if (startDateParam && endDateParam) {
-        const startDateKST = getDateAtKSTMIdnight(startDateParam);
-        const endDateKST = getDateAtKSTMIdnight(endDateParam);
-        endDateKST.setHours(23, 59, 59, 999);
-
-        matchConditions.date = {
-          $gte: startDateKST,
-          $lte: endDateKST,
-        };
-        useDateRangeFilter = true;
-      } else {
-        if (daysParam) {
-          const parsedDays = parseInt(daysParam, 10);
-          if (parsedDays <= 0) {
-            isTotalQueryForFallback = true;
-          } else {
-            daysForFallback = parsedDays;
-          }
-        } else {
-          isTotalQueryForFallback = true;
-        }
-
-        if (!isTotalQueryForFallback) {
-          const todayKSTString = formatDateToKST_YYYYMMDD(new Date());
-          const nowKST = getDateAtKSTMIdnight(todayKSTString);
-
-          const endDate = new Date(nowKST);
-          endDate.setHours(23, 59, 59, 999);
-
-          const startDate = new Date(nowKST);
-          startDate.setDate(nowKST.getDate() - daysForFallback + 1);
-          startDate.setHours(0, 0, 0, 0);
-
-          matchConditions.date = {
-            $gte: startDate,
-            $lte: endDate,
-          };
-        }
-      }
-
-      if (pathnamePattern) {
-        matchConditions.pathname = pathnamePattern;
-      }
-
-      const aggregationPipeline: any[] = [
-        {
-          $match: matchConditions,
-        },
-        {
-          $group: {
-            _id: {
-              year: { $year: { date: '$date', timezone: 'Asia/Seoul' } },
-              month: { $month: { date: '$date', timezone: 'Asia/Seoul' } },
-              day: { $dayOfMonth: { date: '$date', timezone: 'Asia/Seoul' } },
-            },
-            count: { $sum: 1 },
-            uniqueIps: { $addToSet: "$ip" }
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            date: {
-              $dateFromParts: {
-                year: '$_id.year',
-                month: '$_id.month',
-                day: '$_id.day',
-                timezone: 'Asia/Seoul',
-              },
-            },
-            views: "$count",
-            uniqueVisitors: { $size: "$uniqueIps" },
-          },
-        },
-        {
-          $sort: { date: 1 },
-        },
-      ];
-
-      const dailyVisits = await Visit.aggregate(aggregationPipeline);
-      let resultData;
-
-      if (useDateRangeFilter) {
-        const startDateKST = getDateAtKSTMIdnight(startDateParam!);
-        const endDateKST = getDateAtKSTMIdnight(endDateParam!);
-        const filledResult = [];
-        const currentDate = new Date(startDateKST);
-
-        while (currentDate <= endDateKST) {
-          const formattedCurrentDate = formatDateToKST_YYYYMMDD(currentDate);
-          const foundVisit = dailyVisits.find(
-            (visit) => formatDateToKST_YYYYMMDD(visit.date) === formattedCurrentDate
-          );
-          const dateForIso = getDateAtKSTMIdnight(formattedCurrentDate);
-          filledResult.push({
-            _id: formattedCurrentDate,
-            date: formattedCurrentDate,
-            views: foundVisit ? foundVisit.views : 0,
-            visitors: foundVisit ? foundVisit.uniqueVisitors : 0,
-            pageviews: foundVisit ? foundVisit.views : 0,
-            uniqueVisitors: foundVisit ? foundVisit.uniqueVisitors : 0,
-            bounceRate: 0,
-            avgVisitDuration: 0,
-            createdAt: dateForIso.toISOString(),
-            updatedAt: dateForIso.toISOString(),
-          });
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-        resultData = filledResult;
-      } else if (!isTotalQueryForFallback && daysParam && parseInt(daysParam, 10) > 0) {
-        const numDaysToFill = parseInt(daysParam, 10);
-        const todayKSTString = formatDateToKST_YYYYMMDD(new Date());
-        const kstCurrentDay = getDateAtKSTMIdnight(todayKSTString);
-        const filledResult = [];
-
-        for (let i = 0; i < numDaysToFill; i++) {
-          const targetKstDate = new Date(kstCurrentDay);
-          targetKstDate.setDate(kstCurrentDay.getDate() - (numDaysToFill - 1) + i);
-          const formattedTargetKstDate = formatDateToKST_YYYYMMDD(targetKstDate);
-
-          const foundVisit = dailyVisits.find(
-            (visit) => formatDateToKST_YYYYMMDD(visit.date) === formattedTargetKstDate
-          );
-          const dateForIso = getDateAtKSTMIdnight(formattedTargetKstDate);
-          filledResult.push({
-            _id: formattedTargetKstDate,
-            date: formattedTargetKstDate,
-            views: foundVisit ? foundVisit.views : 0,
-            visitors: foundVisit ? foundVisit.uniqueVisitors : 0,
-            pageviews: foundVisit ? foundVisit.views : 0,
-            uniqueVisitors: foundVisit ? foundVisit.uniqueVisitors : 0,
-            bounceRate: 0,
-            avgVisitDuration: 0,
-            createdAt: dateForIso.toISOString(),
-            updatedAt: dateForIso.toISOString(),
-          });
-        }
-        resultData = filledResult;
-      } else {
-        resultData = dailyVisits.map(visit => {
-          const formattedDate = formatDateToKST_YYYYMMDD(visit.date);
-          return {
-            _id: formattedDate,
-            date: formattedDate,
-            views: visit.views,
-            visitors: visit.uniqueVisitors,
-            pageviews: visit.views,
-            uniqueVisitors: visit.uniqueVisitors,
-            bounceRate: 0,
-            avgVisitDuration: 0,
-            createdAt: visit.date.toISOString(),
-            updatedAt: visit.date.toISOString(),
-          };
-        });
-      }
+      });
 
       return NextResponse.json({
         success: true,
-        data: resultData,
+        data: formattedVisits,
+      });
+
+    } else {
+      const query: any = { ...commonMatchConditions };
+      if (pathnamePattern) query.pathname = pathnamePattern;
+
+      const visits = await Visit.find(query)
+        .sort(sort)
+        .lean() as unknown as LeanVisit[];
+
+      const formattedVisits = visits.map(visit => ({
+        _id: visit._id.toString(),
+        date: visit.date ? visit.date.toISOString() : null,
+        ip: visit.ip,
+        pathname: visit.pathname,
+        referrer: visit.referrer,
+        userAgent: visit.userAgent,
+        createdAt: visit.createdAt ? visit.createdAt.toISOString() : null,
+        updatedAt: visit.updatedAt ? visit.updatedAt.toISOString() : null,
+      }));
+
+      return NextResponse.json({
+        success: true,
+        data: formattedVisits,
       });
     }
   } catch (error: any) {
-    console.error('Error fetching visits:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

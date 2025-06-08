@@ -11,16 +11,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { fetchRecentVisitLogs, VisitLogData } from "@/lib/api"
-import { formatDate } from "@/utils/formatDate"
+import { formatDate, getISODateString } from "@/utils/formatDate"
 import { isLocalIp } from "@/utils/isLocalIp"
 import { getBrowserName } from "@/utils/getBrowserName"
-import { useMemo, useState } from "react"
-import { useVisitorsLogStore } from "@/store/visitorsLogStore"
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline"
+import { useMemo, useState } from "react";
+import { useVisitorsLogStore } from "@/store/visitorsLogStore";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
 export function VisitorsLogTable({ className }: React.HTMLAttributes<HTMLDivElement>) {
   const { dateRange, includeLocal, ipSearch } = useVisitorsLogStore();
   const [hideIp, setHideIp] = useState(false);
+  const startDate = dateRange?.from;
+  const endDate = dateRange?.to;
 
   const {
     data: visitLogsResponse,
@@ -28,23 +30,19 @@ export function VisitorsLogTable({ className }: React.HTMLAttributes<HTMLDivElem
     isError,
     error,
   } = useQuery<any, Error, { success: boolean; data: VisitLogData[] }>({
-    queryKey: [
-      "visitLogs",
-      dateRange?.from?.toISOString().split("T")[0],
-      dateRange?.to?.toISOString().split("T")[0],
-    ],
+    queryKey: ["visitLogs", getISODateString(startDate)?.split('T')[0], getISODateString(endDate)?.split('T')[0]],
     queryFn: () => {
       if (!dateRange?.from || !dateRange?.to) {
-        return Promise.resolve({ success: true, data: [] })
+        return Promise.resolve({ success: true, data: [] });
       }
       return fetchRecentVisitLogs(
         1000,
-        dateRange.from.toISOString().split("T")[0],
-        dateRange.to.toISOString().split("T")[0]
-      )
+        getISODateString(dateRange.from),
+        getISODateString(dateRange.to)
+      );
     },
-    enabled: !!dateRange?.from && !!dateRange?.to,
-  })
+    enabled: !!startDate && !!endDate,
+  });
 
   const displayedLogs = useMemo(() => {
     let logs = visitLogsResponse?.data ?? []

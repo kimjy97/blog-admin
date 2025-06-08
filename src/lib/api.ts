@@ -16,14 +16,17 @@ export interface ApiResponse<T> {
 export interface VisitData {
   _id: string;
   date: string;
-  views: number;
-  visitors: number;
-  pageviews: number;
-  uniqueVisitors: number;
-  bounceRate: number;
-  avgVisitDuration: number;
+  ip: string;
+  pathname: string;
+  referrer?: string;
+  userAgent?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ChartVisitData {
+  date: string;
+  isUnique: boolean;
 }
 
 export interface PostData {
@@ -106,8 +109,8 @@ const buildQueryString = (params: Record<string, string | number | boolean | und
 /**
  * 대시보드용 방문자 통계를 가져옵니다.
  */
-export const fetchDashboardVisits = async (): Promise<ApiResponse<VisitData[]>> => {
-  const response = await apiClient.get<ApiResponse<VisitData[]>>("/visits");
+export const fetchDashboardVisits = async (): Promise<ApiResponse<{ totalViews: number, todayViewsIncrement: number }>> => {
+  const response = await apiClient.get<ApiResponse<{ totalViews: number, todayViewsIncrement: number }>>("/visits");
   return response.data;
 };
 
@@ -117,9 +120,19 @@ export const fetchDashboardVisits = async (): Promise<ApiResponse<VisitData[]>> 
  * @param endDate 필터링 종료 날짜 (YYYY-MM-DD).
  * @param includeLocalIps 로컬 IP의 방문을 포함할지 여부.
  */
-export const fetchChartVisits = async (startDate?: string, endDate?: string, includeLocalIps?: boolean): Promise<ApiResponse<VisitData[]>> => {
-  const queryParams = buildQueryString({ startDate, endDate, includeLocalIps });
-  const response = await apiClient.get<ApiResponse<VisitData[]>>(`/visits${queryParams}`);
+const getLocalTimeZone = (): string => {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
+
+/**
+ * 차트용 방문자 통계를 가져오며, 선택적으로 기간 필터링 및 IP 포함 여부를 설정할 수 있습니다.
+ * @param startDate 필터링 시작 날짜 (YYYY-MM-DD).
+ * @param endDate 필터링 종료 날짜 (YYYY-MM-DD).
+ * @param includeLocalIps 로컬 IP의 방문을 포함할지 여부.
+ */
+export const fetchChartVisits = async (startDate?: string, endDate?: string, includeLocalIps?: boolean): Promise<ApiResponse<ChartVisitData[]>> => {
+  const queryParams = buildQueryString({ type: 'chart-stats', startDate, endDate, includeLocalIps });
+  const response = await apiClient.get<ApiResponse<ChartVisitData[]>>(`/visits${queryParams}`);
   return response.data;
 };
 
@@ -130,7 +143,8 @@ export const fetchChartVisits = async (startDate?: string, endDate?: string, inc
  * @param includeLocalIps 로컬 IP의 방문을 포함할지 여부.
  */
 export const fetchPathnameStats = async (startDate?: string, endDate?: string, includeLocalIps?: boolean) => {
-  const queryParams = buildQueryString({ type: 'pathname-stats', startDate, endDate, includeLocalIps });
+  const timeZone = getLocalTimeZone();
+  const queryParams = buildQueryString({ type: 'pathname-stats', startDate, endDate, includeLocalIps, timeZone });
   const response = await apiClient.get(`/visits${queryParams}`);
   return response.data;
 };

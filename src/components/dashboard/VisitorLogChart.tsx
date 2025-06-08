@@ -20,13 +20,14 @@ import { ArrowsRightLeftIcon, ChevronDownIcon, ChartBarIcon } from "@heroicons/r
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { cn } from "@/lib/utils";
+import { format } from 'date-fns';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, ChartDataLabels);
 
 const DAY_ABBREVIATIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
-function lightenHex(hex: string, percent: number): string {
+const lightenHex = (hex: string, percent: number): string => {
   hex = hex.replace(/^#/, '');
   if (hex.length === 3) {
     hex = hex.split('').map(char => char + char).join('');
@@ -44,7 +45,18 @@ function lightenHex(hex: string, percent: number): string {
   b = Math.min(255, Math.max(0, b));
 
   return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
-}
+};
+
+const hexToRgba = (hex: string, alpha: number): string => {
+  hex = hex.replace(/^#/, '');
+  if (hex.length === 3) {
+    hex = hex.split('').map(char => char + char).join('');
+  }
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 export default function VisitorLogChart() {
   const [showContent, setShowContent] = useState(false);
@@ -62,27 +74,33 @@ export default function VisitorLogChart() {
   const [range, setRange] = useState<'dayOfWeek' | 'daily' | 'month'>('dayOfWeek');
   const [includeLocalIps] = useState(false);
 
-  const { startDateString, endDateString } = useMemo(() => {
+  const clientTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const { startDateISO, endDateISO } = useMemo(() => {
     const today = new Date();
-    const currentEndDate = new Date(today);
-    const edString = `${currentEndDate.getFullYear()}-${String(currentEndDate.getMonth() + 1).padStart(2, '0')}-${String(currentEndDate.getDate()).padStart(2, '0')}`;
-    let sdString = '';
+
+    const localEndDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+    const calculatedEndDateISO = localEndDate.toISOString();
+
+    let calculatedStartDateISO = '';
 
     if (range === 'dayOfWeek') {
-      const currentStartDate = new Date(today);
-      currentStartDate.setDate(today.getDate() - 6);
-      sdString = `${currentStartDate.getFullYear()}-${String(currentStartDate.getMonth() + 1).padStart(2, '0')}-${String(currentStartDate.getDate()).padStart(2, '0')}`;
+      const localStartDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      localStartDate.setDate(localStartDate.getDate() - 6);
+      localStartDate.setHours(0, 0, 0, 0);
+      calculatedStartDateISO = localStartDate.toISOString();
     } else if (range === 'daily') {
-      const currentStartDate = new Date(today);
-      currentStartDate.setDate(today.getDate() - 13);
-      sdString = `${currentStartDate.getFullYear()}-${String(currentStartDate.getMonth() + 1).padStart(2, '0')}-${String(currentStartDate.getDate()).padStart(2, '0')}`;
+      const localStartDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      localStartDate.setDate(localStartDate.getDate() - 13);
+      localStartDate.setHours(0, 0, 0, 0);
+      calculatedStartDateISO = localStartDate.toISOString();
     } else if (range === 'month') {
-      const currentStartDate = new Date(today);
-      currentStartDate.setMonth(today.getMonth() - 11);
-      currentStartDate.setDate(1);
-      sdString = `${currentStartDate.getFullYear()}-${String(currentStartDate.getMonth() + 1).padStart(2, '0')}-${String(currentStartDate.getDate()).padStart(2, '0')}`;
+      const localStartDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      localStartDate.setMonth(localStartDate.getMonth() - 11);
+      localStartDate.setHours(0, 0, 0, 0);
+      calculatedStartDateISO = localStartDate.toISOString();
     }
-    return { startDateString: sdString, endDateString: edString };
+    return { startDateISO: calculatedStartDateISO, endDateISO: calculatedEndDateISO };
   }, [range]);
 
   const {
@@ -90,14 +108,15 @@ export default function VisitorLogChart() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['dashboard', 'chartVisits', range, startDateString, endDateString, includeLocalIps],
-    queryFn: () => fetchChartVisits(startDateString, endDateString, includeLocalIps),
+    queryKey: ['dashboard', 'chartVisits', range, startDateISO.split('T')[0], endDateISO.split('T')[0], includeLocalIps],
+    queryFn: () => fetchChartVisits(startDateISO, endDateISO, includeLocalIps),
     select: (response) => {
       if (response.success) {
         return response.data;
       }
       throw new Error(response.message || 'Failed to fetch chart visit data');
-    }
+    },
+    enabled: !!startDateISO && !!endDateISO,
   });
 
   const visitStats = visitStatsResponse || [];
@@ -144,119 +163,120 @@ export default function VisitorLogChart() {
   }, [chartType, themeVars, visitStats]);
 
   const chartData = useMemo(() => {
-    if (visitStats.length === 0 && isLoading) {
-      return { labels: [], datasets: [{ label: "방문자 수", data: [] }], yMax: 10 };
-    }
-    if (error) {
+    if (isLoading || error) {
       return { labels: [], datasets: [{ label: "방문자 수", data: [] }], yMax: 10 };
     }
 
-    const todayKst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-    const todayYear = todayKst.getFullYear();
-    const todayMonth = (todayKst.getMonth() + 1).toString().padStart(2, '0');
-    const todayDay = todayKst.getDate().toString().padStart(2, '0');
-    const todayKstString = `${todayYear}-${todayMonth}-${todayDay}`;
+    const todayInClientTZ = new Date();
+    todayInClientTZ.setHours(0, 0, 0, 0);
+
+    const todayStartOfClientTZ = new Date(todayInClientTZ.getFullYear(), todayInClientTZ.getMonth(), todayInClientTZ.getDate(), 0, 0, 0, 0);
 
     let processedLabels: string[] = [];
     let processedData: number[] = [];
-    let originalDates: string[] = [];
+    let originalDatesForHighlight: Date[] = [];
 
-    if (visitStats && visitStats.length > 0 && !isLoading && !error) {
-      if (range === 'dayOfWeek') {
-        processedLabels = visitStats.map(item => DAY_ABBREVIATIONS[new Date(item.date).getUTCDay()]);
-        processedData = visitStats.map(item => item.views);
-        originalDates = visitStats.map(item => item.date);
-      } else if (range === 'daily') {
-        processedLabels = visitStats.map(item => `${new Date(item.date).getUTCDate()}일`);
-        processedData = visitStats.map(item => item.views);
-        originalDates = visitStats.map(item => item.date);
-      } else if (range === 'month') {
-        const monthlyViews: { [month: string]: { views: number, originalDateForMonth?: string } } = {};
-        const monthKeys: string[] = [];
-        const currentYear = todayKst.getFullYear();
-        const currentMonth = todayKst.getMonth();
+    const dailyAggregatedData = new Map<string, { views: number, uniqueVisitors: number }>();
+    visitStats.forEach(item => {
+      const localDate = new Date(item.date);
+      const dateKey = format(localDate, "yyyy-MM-dd");
 
-        for (let i = 11; i >= 0; i--) {
-          const d = new Date(currentYear, currentMonth - i, 1);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-          monthKeys.push(key);
-          monthlyViews[key] = { views: 0 };
-        }
+      const existingData = dailyAggregatedData.get(dateKey) || { views: 0, uniqueVisitors: 0 };
+      dailyAggregatedData.set(dateKey, {
+        views: existingData.views + 1,
+        uniqueVisitors: existingData.uniqueVisitors + (item.isUnique ? 1 : 0),
+      });
+    });
 
-        visitStats.forEach(item => {
-          const itemDate = new Date(item.date);
-          const monthKey = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}`;
-          if (monthlyViews.hasOwnProperty(monthKey)) {
-            monthlyViews[monthKey].views += item.views;
-            if (!monthlyViews[monthKey].originalDateForMonth || new Date(item.date) < new Date(monthlyViews[monthKey].originalDateForMonth!)) {
-              monthlyViews[monthKey].originalDateForMonth = item.date;
-            }
-          }
-        });
-        processedLabels = monthKeys.map(key => MONTH_NAMES[parseInt(key.split('-')[1]) - 1]);
-        processedData = monthKeys.map(key => monthlyViews[key]?.views || 0);
-        originalDates = monthKeys.map(key => monthlyViews[key]?.originalDateForMonth || `${key}-01`);
+    if (range === 'dayOfWeek') {
+      const daysToDisplay = 7;
+      const endDate = new Date(todayInClientTZ);
+      const startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - (daysToDisplay - 1));
+
+      for (let i = 0; i < daysToDisplay; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        const dateKey = format(currentDate, "yyyy-MM-dd");
+        const foundData = dailyAggregatedData.get(dateKey);
+
+        processedLabels.push(DAY_ABBREVIATIONS[currentDate.getDay()]);
+        originalDatesForHighlight.push(currentDate);
+        processedData.push(foundData?.views || 0);
       }
-    } else if (!isLoading && !error) {
-      const today = new Date();
-      if (range === 'dayOfWeek') {
-        for (let i = 6; i >= 0; i--) {
-          const pastDate = new Date(today);
-          pastDate.setDate(today.getDate() - i);
-          processedLabels.push(DAY_ABBREVIATIONS[pastDate.getDay()]);
-          originalDates.push(`${pastDate.getFullYear()}-${(pastDate.getMonth() + 1).toString().padStart(2, '0')}-${pastDate.getDate().toString().padStart(2, '0')}`);
-        }
-      } else if (range === 'daily') {
-        for (let i = 13; i >= 0; i--) {
-          const pastDate = new Date(today);
-          pastDate.setDate(today.getDate() - i);
-          processedLabels.push(`${pastDate.getDate()}일`);
-          originalDates.push(`${pastDate.getFullYear()}-${(pastDate.getMonth() + 1).toString().padStart(2, '0')}-${pastDate.getDate().toString().padStart(2, '0')}`);
-        }
-      } else if (range === 'month') {
-        for (let i = 11; i >= 0; i--) {
-          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-          processedLabels.push(MONTH_NAMES[d.getMonth()]);
-          originalDates.push(`${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-01`);
-        }
+    } else if (range === 'daily') {
+      const daysToDisplay = 14;
+      const endDate = new Date(todayInClientTZ);
+      const startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - (daysToDisplay - 1));
+
+      for (let i = 0; i < daysToDisplay; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        const dateKey = format(currentDate, "yyyy-MM-dd");
+        const foundData = dailyAggregatedData.get(dateKey);
+
+        processedLabels.push(`${currentDate.getDate()}일`);
+        originalDatesForHighlight.push(currentDate);
+        processedData.push(foundData?.views || 0);
       }
-      processedData = new Array(processedLabels.length).fill(0);
+    } else if (range === 'month') {
+      const monthsToDisplay = 12;
+      const endDate = new Date(todayInClientTZ.getFullYear(), todayInClientTZ.getMonth(), 1);
+      const startDate = new Date(endDate);
+      startDate.setMonth(endDate.getMonth() - (monthsToDisplay - 1));
+
+      const monthlyAggregatedViews: { [monthKey: string]: number } = {};
+      dailyAggregatedData.forEach((data, dateKey) => {
+        const itemDate = new Date(dateKey);
+        const monthKey = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}`;
+        monthlyAggregatedViews[monthKey] = (monthlyAggregatedViews[monthKey] || 0) + data.views;
+      });
+
+      for (let i = 0; i < monthsToDisplay; i++) {
+        const currentMonthDate = new Date(startDate);
+        currentMonthDate.setMonth(startDate.getMonth() + i);
+        const monthKey = `${currentMonthDate.getFullYear()}-${String(currentMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+        processedLabels.push(MONTH_NAMES[currentMonthDate.getMonth()]);
+        originalDatesForHighlight.push(currentMonthDate);
+        processedData.push(monthlyAggregatedViews[monthKey] || 0);
+      }
     }
 
     const todayHighlightColor = themeVars.accent;
     const defaultColor = themeVars.primary;
 
-    const barChartBackgroundColors = originalDates.map(dateStr => {
+    const barChartBackgroundColors = originalDatesForHighlight.map(dateObj => {
       if (range === 'dayOfWeek' || range === 'daily') {
-        return dateStr === todayKstString ? todayHighlightColor : defaultColor;
+        return dateObj.toDateString() === todayStartOfClientTZ.toDateString() ? todayHighlightColor : defaultColor;
       } else if (range === 'month') {
-        const d = new Date(dateStr);
-        return d.getFullYear() === todayYear && d.getMonth() === todayKst.getMonth() ? todayHighlightColor : defaultColor;
+        return dateObj.getFullYear() === todayStartOfClientTZ.getFullYear() && dateObj.getMonth() === todayStartOfClientTZ.getMonth() ? todayHighlightColor : defaultColor;
       }
       return defaultColor;
     });
 
     const chartBackgroundColor: any = (ctx: any) => {
       const index = ctx.dataIndex;
-      const baseColorForGradient = (barChartBackgroundColors[index] || defaultColor).substring(0, 7);
+      const colorCandidate = barChartBackgroundColors[index] || defaultColor;
+      const baseColorForGradient = (colorCandidate.startsWith('#') && colorCandidate.length === 7) ? colorCandidate : themeVars.primary;
       const finalColor = barChartBackgroundColors[index] || defaultColor;
 
       if (chartType === 'bar' && chartRef.current && chartRef.current.ctx && chartRef.current.chartArea) {
         const gradient = chartRef.current.ctx.createLinearGradient(0, chartRef.current.chartArea.bottom, 0, chartRef.current.chartArea.top);
-        gradient.addColorStop(0, baseColorForGradient + '22');
-        gradient.addColorStop(0.7, baseColorForGradient + 'cc');
+        gradient.addColorStop(0, hexToRgba(baseColorForGradient, 0.13));
+        gradient.addColorStop(0.7, hexToRgba(baseColorForGradient, 0.8));
         gradient.addColorStop(1, finalColor);
         return gradient;
       }
       return finalColor;
     };
 
-    const lineChartBorderColors = originalDates.map(dateStr => {
+    const lineChartBorderColors = originalDatesForHighlight.map(dateObj => {
       if (range === 'dayOfWeek' || range === 'daily') {
-        return dateStr === todayKstString ? todayHighlightColor : defaultColor;
+        return dateObj.toDateString() === todayStartOfClientTZ.toDateString() ? todayHighlightColor : defaultColor;
       } else if (range === 'month') {
-        const d = new Date(dateStr);
-        return d.getFullYear() === todayYear && d.getMonth() === todayKst.getMonth() ? todayHighlightColor : defaultColor;
+        return dateObj.getFullYear() === todayStartOfClientTZ.getFullYear() && dateObj.getMonth() === todayStartOfClientTZ.getMonth() ? todayHighlightColor : defaultColor;
       }
       return defaultColor;
     });
@@ -273,7 +293,6 @@ export default function VisitorLogChart() {
     }
     if (maxValue > 0 && yMax < 5) yMax = 5;
 
-
     return {
       labels: processedLabels,
       datasets: [
@@ -283,30 +302,30 @@ export default function VisitorLogChart() {
           backgroundColor: chartType === 'bar' ? chartBackgroundColor : undefined,
           hoverBackgroundColor: chartType === 'bar' ? (ctx: any) => {
             const index = ctx.dataIndex;
-            const baseColor = (barChartBackgroundColors[index] || defaultColor).substring(0, 7);
+            const colorCandidate = barChartBackgroundColors[index] || defaultColor;
+            const baseColor = (colorCandidate.startsWith('#') && colorCandidate.length === 7) ? colorCandidate : themeVars.primary;
             const finalColor = barChartBackgroundColors[index] || defaultColor;
 
             if (chartRef.current && chartRef.current.ctx && chartRef.current.chartArea) {
               const gradient = chartRef.current.ctx.createLinearGradient(0, chartRef.current.chartArea.bottom, 0, chartRef.current.chartArea.top);
               const hoverBaseColorLightened = lightenHex(baseColor, 10);
 
-              gradient.addColorStop(0, hoverBaseColorLightened + '33');
-              gradient.addColorStop(0.7, hoverBaseColorLightened + 'dd');
+              gradient.addColorStop(0, hexToRgba(hoverBaseColorLightened, 0.2));
+              gradient.addColorStop(0.7, hexToRgba(hoverBaseColorLightened, 0.87));
               gradient.addColorStop(1, hoverBaseColorLightened);
               return gradient;
             }
-            return finalColor + 'dd';
+            return hexToRgba(finalColor, 0.87);
           } : undefined,
           borderColor: chartType === 'bar' ? 'rgba(0,0,0,0)' : lineChartBorderColors,
           borderWidth: chartType === 'bar' ? 0 : 3,
           pointBackgroundColor: chartType === 'line' ? (context: any) => {
             const index = context.dataIndex;
-            const dateStr = originalDates[index];
+            const dateObj = originalDatesForHighlight[index];
             if (range === 'dayOfWeek' || range === 'daily') {
-              return dateStr === todayKstString ? todayHighlightColor : themeVars.card;
+              return dateObj.toDateString() === todayStartOfClientTZ.toDateString() ? todayHighlightColor : themeVars.card;
             } else if (range === 'month') {
-              const d = new Date(dateStr);
-              return d.getFullYear() === todayYear && d.getMonth() === todayKst.getMonth() ? todayHighlightColor : themeVars.card;
+              return dateObj.getFullYear() === todayStartOfClientTZ.getFullYear() && dateObj.getMonth() === todayStartOfClientTZ.getMonth() ? todayHighlightColor : themeVars.card;
             }
             return themeVars.card;
           } : themeVars.card,
@@ -323,7 +342,7 @@ export default function VisitorLogChart() {
       ],
       yMax,
     };
-  }, [themeVars, chartRef.current, chartType, chartReady, range, visitStats, isLoading, error]);
+  }, [themeVars, chartRef.current, chartType, chartReady, range, visitStats, isLoading, error, clientTimeZone]);
 
   const commonOptions = useMemo(() => {
     let yAxisStepSize;
@@ -338,7 +357,6 @@ export default function VisitorLogChart() {
     }
     if (yAxisStepSize === 0 && chartData.yMax > 0) yAxisStepSize = Math.ceil(chartData.yMax / 5) || 1;
     if (chartData.yMax === 0) yAxisStepSize = 1;
-
 
     return {
       responsive: true,

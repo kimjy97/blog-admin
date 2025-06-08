@@ -7,26 +7,17 @@ import { useAnalyticsStore } from '@/store/analyticsStore';
 import { format } from 'date-fns';
 import { ko } from "date-fns/locale";
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-
-interface AxiosPopularTagsResponse {
-  data: ApiResponse<PopularTagData[]>;
-}
+import { getISODateString } from '@/utils/formatDate';
 
 export function PopularTagsList() {
   const { dateRange } = useAnalyticsStore();
   const startDate = dateRange?.from;
   const endDate = dateRange?.to;
 
-  const { data: queryData, isLoading, isError } = useQuery<AxiosPopularTagsResponse, Error, ApiResponse<PopularTagData[]>>({
-    queryKey: ['popularTags', startDate, endDate],
-    queryFn: async () => {
-      const start = startDate ? format(startDate, 'yyyy-MM-dd') : undefined;
-      const end = endDate ? format(endDate, 'yyyy-MM-dd') : undefined;
-      const apiResponse = await fetchPopularTags(start, end);
-      return { data: apiResponse };
-    },
+  const { data: queryData, isLoading, isError } = useQuery<ApiResponse<PopularTagData[]>, Error>({
+    queryKey: ['popularTags', getISODateString(startDate)?.split('T')[0], getISODateString(endDate)?.split('T')[0]],
+    queryFn: () => fetchPopularTags(getISODateString(startDate!), getISODateString(endDate!)),
     enabled: !!startDate && !!endDate,
-    select: (response) => response.data,
   });
 
   const popularTags = queryData?.success ? queryData.data : [];

@@ -47,7 +47,7 @@ const DashboardCard = React.memo(function DashboardCard({
               {title}
             </CardTitle>
           </CardHeader>
-          <CardContent className={cn("transition-opacity duration-300 ease-in-out", showContent ? "opacity-100" : "opacity-0")}> {/* pb-6 추가 */}
+          <CardContent className={cn("transition-opacity duration-300 ease-in-out", showContent ? "opacity-100" : "opacity-0")}>
             <div className="flex items-center text-2xl md:text-4xl font-medium">
               {value}
               {badge && <span className="ml-3">{badge}</span>}

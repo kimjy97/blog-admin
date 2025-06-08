@@ -33,10 +33,12 @@ import {
 } from "@/components/ui/select";
 import { fetchChartVisits } from "@/lib/api"
 import LoadingSpinner from "@/components/ui/LoadingSpinner"
-import { format } from 'date-fns';
+import { format, eachDayOfInterval, getDay } from 'date-fns';
 import { useMemo, useState } from "react"
-import { ko } from "date-fns/locale"
 import { useAnalyticsStore } from "@/store/analyticsStore"
+import { formatDate, getISODateString } from "@/utils/formatDate";
+
+const DAY_ABBREVIATIONS = ['일', '월', '화', '수', '목', '금', '토'];
 
 const chartConfig = {
   views: {
@@ -56,48 +58,73 @@ export function AnalyticsChart() {
 
   const [chartType, setChartType] = useState<"area" | "bar">("bar")
 
-  const formatDateToYYYYMMDD = (date: Date | undefined): string | undefined => {
-    return date ? format(date, "yyyy-MM-dd") : undefined;
-  };
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["visits", formatDateToYYYYMMDD(startDate), formatDateToYYYYMMDD(endDate), includeLocal],
-    queryFn: () => {
-      const formattedStartDate = formatDateToYYYYMMDD(startDate);
-      const formattedEndDate = formatDateToYYYYMMDD(endDate);
-      if (formattedStartDate && formattedEndDate) {
-        return fetchChartVisits(formattedStartDate, formattedEndDate, includeLocal);
-      }
-      return Promise.resolve(null);
-    },
+  const { data: visitStatsResponse, isLoading, isError } = useQuery({
+    queryKey: ["visits", getISODateString(startDate)?.split('T')[0], getISODateString(endDate)?.split('T')[0], includeLocal],
+    queryFn: () => fetchChartVisits(getISODateString(startDate!), getISODateString(endDate!), includeLocal),
     enabled: !!startDate && !!endDate,
   })
 
+  const visitStats = visitStatsResponse?.data || [];
+
   const chartData = useMemo(() => {
-    if (!data?.success) return []
-    return data.data.map((d) => ({
-      date: d.date,
-      views: d.views,
-      uniqueVisitors: d.uniqueVisitors,
-    }))
-  }, [data])
+    if (isError || isLoading || !startDate || !endDate) return [];
+
+    const dailyAggregatedData = new Map<string, { views: number, uniqueVisitors: number }>();
+
+    visitStats.forEach(item => {
+      const localDate = new Date(item.date);
+      const dateKey = format(localDate, "yyyy-MM-dd");
+
+      const existingData = dailyAggregatedData.get(dateKey) || { views: 0, uniqueVisitors: 0 };
+      dailyAggregatedData.set(dateKey, {
+        views: existingData.views + 1,
+        uniqueVisitors: existingData.uniqueVisitors + (item.isUnique ? 1 : 0),
+      });
+    });
+
+    const allDatesInRange = eachDayOfInterval({ start: startDate, end: endDate });
+
+    let processedChartData: { date: string, views: number, uniqueVisitors: number }[] = [];
+
+    allDatesInRange.forEach(currentDate => {
+      const dateKey = format(currentDate, "yyyy-MM-dd");
+      const foundData = dailyAggregatedData.get(dateKey);
+
+      let formattedDateLabel: string;
+      const diffDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+
+      if (diffDays <= 7) {
+        formattedDateLabel = DAY_ABBREVIATIONS[getDay(currentDate)];
+      } else {
+        formattedDateLabel = format(currentDate, "MM.dd");
+      }
+
+      processedChartData.push({
+        date: formattedDateLabel,
+        views: foundData?.views || 0,
+        uniqueVisitors: foundData?.uniqueVisitors || 0,
+      });
+    });
+
+    return processedChartData;
+  }, [visitStats, startDate, endDate, isLoading, isError])
 
   return (
     <Card className="w-full pt-0">
       <CardHeader className="flex flex-wrap items-center justify-between sm:gap-2 gap-6 border-b sm:py-6 py-3 sm:!h-auto h-16">
-        <div className="flex flex-col gap-2 text-center sm:text-left"> {/* Changed grid to flex and added items-center */}
+        <div className="flex flex-col gap-2 text-center sm:text-left">
           <CardTitle>
             {dataType} 통계
           </CardTitle>
-          <CardDescription className="sm:block hidden ml-auto"> {/* Added ml-auto to push description to the right if needed */}
+          <CardDescription className="sm:block hidden ml-auto">
             {startDate && endDate
-              ? `${format(startDate, "y. MM. dd", { locale: ko })} - ${format(endDate, "y. MM. dd", { locale: ko })}`
+              ? `${formatDate(startDate)} - ${formatDate(endDate)}`
               : `날짜 범위를 선택해주세요.`}
           </CardDescription>
         </div>
         <div className="flex gap-2">
           <Select value={dataType} onValueChange={(v) => setDataType(v as "전체 + 순 방문자" | "전체 방문자" | "순 방문자")}>
-            <SelectTrigger className="rounded-lg h-8 w-auto"> {/* Adjusted styling for better fit */}
+            <SelectTrigger className="rounded-lg h-8 w-auto">
               <SelectValue placeholder="방문자 타입" />
             </SelectTrigger>
             <SelectContent>
@@ -151,23 +178,13 @@ export function AnalyticsChart() {
                   axisLine={false}
                   tickMargin={8}
                   minTickGap={32}
-                  tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }
+                  tickFormatter={(value) => value}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(value) =>
-                        new Date(value).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      }
+                      labelFormatter={(value) => value}
                       indicator="dot"
                     />
                   }
@@ -199,23 +216,13 @@ export function AnalyticsChart() {
                   axisLine={false}
                   tickMargin={10}
                   minTickGap={32}
-                  tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString("ko-KR", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }
+                  tickFormatter={(value) => value}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(value) =>
-                        new Date(value).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      }
+                      labelFormatter={(value) => value}
                       indicator="dot"
                     />
                   }

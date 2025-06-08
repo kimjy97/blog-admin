@@ -30,6 +30,7 @@ import { format } from 'date-fns';
 import { ko } from "date-fns/locale"
 import { useMemo, useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getISODateString } from "@/utils/formatDate"
 
 interface BarShapeProps {
   x?: number;
@@ -77,12 +78,8 @@ const PathnameChart = () => {
   const endDate = dateRange?.to;
 
   const { data, isLoading, isError } = useQuery<PathnameApiResponse, Error, PathnameStat[]>({
-    queryKey: ["pathnameStats", startDate, endDate, includeLocal],
-    queryFn: () => {
-      const start = startDate ? format(startDate, "yyyy-MM-dd") : undefined;
-      const end = endDate ? format(endDate, "yyyy-MM-dd") : undefined;
-      return fetchPathnameStats(start, end, includeLocal);
-    },
+    queryKey: ["pathnameStats", getISODateString(startDate)?.split('T')[0], getISODateString(endDate)?.split('T')[0], includeLocal],
+    queryFn: () => fetchPathnameStats(getISODateString(startDate!), getISODateString(endDate!), includeLocal),
     enabled: !!startDate && !!endDate,
     select: (response) => response.data,
   });

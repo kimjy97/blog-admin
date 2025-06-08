@@ -1,7 +1,7 @@
 import { AuthOptions, User as NextAuthUser } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import { Session } from "next-auth";
-import { MongoDBAdapter } from "@next-auth/mongodb-adapter";
+import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { connectDB, getMongoClient } from "@/lib/db";
 import User from "@/models/User";

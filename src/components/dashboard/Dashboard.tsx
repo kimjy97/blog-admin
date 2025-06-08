@@ -19,17 +19,8 @@ const Dashboard = () => {
       if (!response || !response.success || !response.data) {
         return { totalViews: 0, todayViewsIncrement: 0 };
       }
-      const visits: { date: string; views: number }[] = response.data;
-      const totalViews = visits.reduce((sum, item) => sum + item.views, 0);
-
-      const nowKst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-      const year = nowKst.getFullYear();
-      const month = (nowKst.getMonth() + 1).toString().padStart(2, '0');
-      const day = nowKst.getDate().toString().padStart(2, '0');
-      const todayKstString = `${year}-${month}-${day}`;
-
-      const todayData = visits.find((item: { date: string }) => item.date === todayKstString);
-      const todayViewsIncrement = todayData ? todayData.views : 0;
+      const totalViews = response.data.totalViews;
+      const todayViewsIncrement = response.data.todayViewsIncrement;
 
       return { totalViews, todayViewsIncrement };
     },

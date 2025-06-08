@@ -46,7 +46,6 @@ export default function SidebarMenuItem({
         onClick={onLinkClick}
       >
         <Icon className="w-6 h-6" aria-hidden />
-        {/* Tooltip */}
         <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-background border border-border rounded px-2 py-1 text-xs shadow-lg whitespace-nowrap z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-150">
           {label}
         </span>
