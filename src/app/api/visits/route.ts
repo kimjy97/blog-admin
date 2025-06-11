@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Visit, { IVisit } from '@/models/Visit';
-import { getDateAtMidnightUTC } from '@/utils/formatDate';
 
 interface LeanVisit extends IVisit {
   _id: string;

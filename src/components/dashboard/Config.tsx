@@ -1,6 +1,5 @@
 import React from 'react';
 import { ArrowUpIcon, EyeIcon, DocumentTextIcon, ChatBubbleLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
-import { IVisit } from '@/models/Visit';
 
 export const renderBadge = (value: number | string | undefined): React.JSX.Element => (
   <span className="px-2 py-1 rounded-lg flex items-center text-xs md:text-base border border-border text-[var(--color-accent)] bg-transparent">

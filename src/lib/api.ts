@@ -1,7 +1,6 @@
 import { IPost } from "@/models/Post";
 import apiClient from "./apiClient";
 import { IComment } from "@/models/Comment";
-import { IVisit } from "@/models/Visit";
 
 // --- 일반 API 응답 ---
 export interface ApiResponse<T> {
