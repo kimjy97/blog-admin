@@ -39,21 +39,13 @@ const buildCommonMatchConditions = (searchParams: URLSearchParams): any => {
   }
 
   if (startDateParam && endDateParam) {
-    const cleanStartDateParam = startDateParam.split('T')[0];
-    const cleanEndDateParam = endDateParam.split('T')[0];
+    const cleanStartDateParam = new Date(startDateParam);
+    const cleanEndDateParam = new Date(endDateParam);
 
-    const startDate = getDateAtMidnightUTC(cleanStartDateParam);
-    const endDate = getDateAtMidnightUTC(cleanEndDateParam);
-
-    if (startDate && endDate) {
-      const endOfDayUTC = new Date(endDate);
-      endOfDayUTC.setUTCHours(23, 59, 59, 999);
-
-      matchConditions.date = {
-        $gte: startDate,
-        $lte: endOfDayUTC,
-      };
-    }
+    matchConditions.date = {
+      $gte: cleanStartDateParam,
+      $lte: cleanEndDateParam,
+    };
   }
   return matchConditions;
 }
@@ -68,38 +60,23 @@ export async function GET(request: NextRequest) {
     const pathnamePattern = searchParams.get('pathname');
     const limit = parseInt(searchParams.get('limit') || '1000', 10);
     const sort = searchParams.get('sort') || '-date';
-    const startDateParam = searchParams.get('startDate');
-    const endDateParam = searchParams.get('endDate');
 
-    if (!type && !daysParam && !pathnamePattern && !startDateParam && !endDateParam) {
+    const commonMatchConditions = buildCommonMatchConditions(searchParams);
+
+    if (!type && !daysParam && !pathnamePattern) {
       const totalViews = await Visit.countDocuments({});
-
-      const todayString = formatDateToYYYYMMDD(new Date());
-      const startOfTodayUTC = getDateAtMidnightUTC(todayString);
-
-      let todayViewsIncrement = 0;
-      if (startOfTodayUTC) {
-        const endOfTodayUTC = new Date(startOfTodayUTC);
-        endOfTodayUTC.setUTCHours(23, 59, 59, 999);
-
-        todayViewsIncrement = await Visit.countDocuments({
-          date: {
-            $gte: startOfTodayUTC,
-            $lte: endOfTodayUTC,
-          }
-        });
-      }
+      const todayViews = await Visit.countDocuments(commonMatchConditions)
+        .sort({ date: 1 })
+        .lean() as unknown as LeanVisit[];
 
       return NextResponse.json({
         success: true,
         data: {
           totalViews: totalViews,
-          todayViewsIncrement: todayViewsIncrement,
+          todayViews: todayViews,
         }
       });
     }
-
-    const commonMatchConditions = buildCommonMatchConditions(searchParams);
 
     if (type === VISIT_TYPES.LOGS) {
       const query: any = { ...commonMatchConditions };

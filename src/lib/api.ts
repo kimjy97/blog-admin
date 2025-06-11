@@ -1,6 +1,7 @@
 import { IPost } from "@/models/Post";
 import apiClient from "./apiClient";
 import { IComment } from "@/models/Comment";
+import { IVisit } from "@/models/Visit";
 
 // --- 일반 API 응답 ---
 export interface ApiResponse<T> {
@@ -109,8 +110,16 @@ const buildQueryString = (params: Record<string, string | number | boolean | und
 /**
  * 대시보드용 방문자 통계를 가져옵니다.
  */
-export const fetchDashboardVisits = async (): Promise<ApiResponse<{ totalViews: number, todayViewsIncrement: number }>> => {
-  const response = await apiClient.get<ApiResponse<{ totalViews: number, todayViewsIncrement: number }>>("/visits");
+export const fetchDashboardVisits = async (): Promise<ApiResponse<{ totalViews: number, todayViews: number }>> => {
+  const today = new Date();
+  const localStartDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+  const localEndDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  const startDate = localStartDate.toISOString();
+  const endDate = localEndDate.toISOString();
+
+  const queryParams = buildQueryString({ endDate, startDate });
+
+  const response = await apiClient.get<ApiResponse<{ totalViews: number, todayViews: number }>>(`/visits${queryParams}`);
   return response.data;
 };
 

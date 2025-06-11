@@ -27,13 +27,18 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   dataType: "전체 방문자",
   includeLocal: false,
   setDateRange: (newDateRange) => {
-    if (newDateRange?.from) {
-      newDateRange.from.setHours(0, 0, 0, 0);
+    const fromDate = newDateRange?.from ? new Date(newDateRange.from) : undefined;
+    const toDate = newDateRange?.to ? new Date(newDateRange.to) : undefined;
+
+    if (fromDate) {
+      fromDate.setHours(0, 0, 0, 0);
     }
-    if (newDateRange?.to) {
-      newDateRange.to.setHours(23, 59, 59, 999);
+    if (toDate) {
+      toDate.setHours(23, 59, 59, 999);
     }
-    set({ dateRange: newDateRange });
+
+    const result = { from: fromDate, to: toDate };
+    set({ dateRange: result });
   },
   setDataType: (newDataType) => set({ dataType: newDataType }),
   setIncludeLocal: (newIncludeLocal) => set({ includeLocal: newIncludeLocal }),

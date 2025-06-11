@@ -17,12 +17,12 @@ const Dashboard = () => {
     queryFn: fetchDashboardVisits,
     select: (response) => {
       if (!response || !response.success || !response.data) {
-        return { totalViews: 0, todayViewsIncrement: 0 };
+        return { totalViews: 0, todayViews: 0 };
       }
       const totalViews = response.data.totalViews;
-      const todayViewsIncrement = response.data.todayViewsIncrement;
+      const todayViews = response.data.todayViews;
 
-      return { totalViews, todayViewsIncrement };
+      return { totalViews, todayViews };
     },
   });
 

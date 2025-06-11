@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowUpIcon, EyeIcon, DocumentTextIcon, ChatBubbleLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { IVisit } from '@/models/Visit';
 
 export const renderBadge = (value: number | string | undefined): React.JSX.Element => (
   <span className="px-2 py-1 rounded-lg flex items-center text-xs md:text-base border border-border text-[var(--color-accent)] bg-transparent">
@@ -18,7 +19,7 @@ export interface DashboardCardData {
 }
 
 export const getDashboardCardsConfig = (
-  visitsData: { totalViews?: number; todayViewsIncrement?: number } | undefined,
+  visitsData: { totalViews?: number; todayViews?: number } | undefined,
   postsStats: { totalPosts?: number; todayPublishedPostsCount?: number } | undefined,
   commentsStats: { totalComments?: number; todayCommentsCount?: number } | undefined,
   draftCount: number,
@@ -27,7 +28,7 @@ export const getDashboardCardsConfig = (
       icon: <EyeIcon className="w-4 h-4 md:w-5 md:h-5 mr-2 inline-block align-text-bottom text-muted-foreground" />,
       title: "블로그 조회수",
       value: <span className="text-3xl font-bold tracking-tight">{(visitsData?.totalViews ?? 0).toLocaleString()}</span>,
-      badge: renderBadge(visitsData?.todayViewsIncrement),
+      badge: renderBadge(visitsData?.todayViews),
       description: "전체 누적",
     },
     {

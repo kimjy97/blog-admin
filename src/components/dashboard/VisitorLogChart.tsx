@@ -172,9 +172,9 @@ export default function VisitorLogChart() {
 
     const todayStartOfClientTZ = new Date(todayInClientTZ.getFullYear(), todayInClientTZ.getMonth(), todayInClientTZ.getDate(), 0, 0, 0, 0);
 
-    let processedLabels: string[] = [];
-    let processedData: number[] = [];
-    let originalDatesForHighlight: Date[] = [];
+    const processedLabels: string[] = [];
+    const processedData: number[] = [];
+    const originalDatesForHighlight: Date[] = [];
 
     const dailyAggregatedData = new Map<string, { views: number, uniqueVisitors: number }>();
     visitStats.forEach(item => {

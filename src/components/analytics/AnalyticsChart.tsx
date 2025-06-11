@@ -84,7 +84,7 @@ export function AnalyticsChart() {
 
     const allDatesInRange = eachDayOfInterval({ start: startDate, end: endDate });
 
-    let processedChartData: { date: string, views: number, uniqueVisitors: number }[] = [];
+    const processedChartData: { date: string, views: number, uniqueVisitors: number }[] = [];
 
     allDatesInRange.forEach(currentDate => {
       const dateKey = format(currentDate, "yyyy-MM-dd");
