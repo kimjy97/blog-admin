@@ -19,9 +19,8 @@ export interface DashboardCardData {
 
 export const getDashboardCardsConfig = (
   visitsData: { totalViews?: number; todayViews?: number } | undefined,
-  postsStats: { totalPosts?: number; todayPublishedPostsCount?: number } | undefined,
-  commentsStats: { totalComments?: number; todayCommentsCount?: number } | undefined,
-  draftCount: number,
+  postsStats: { totalPostsCount?: number; todayPostsCount?: number; draftPostsCount?: number } | undefined,
+  commentsStats: { totalCommentsCount?: number; todayCommentsCount?: number } | undefined,
 ): Omit<DashboardCardData, 'isLoading'>[] => [
     {
       icon: <EyeIcon className="w-4 h-4 md:w-5 md:h-5 mr-2 inline-block align-text-bottom text-muted-foreground" />,
@@ -33,21 +32,21 @@ export const getDashboardCardsConfig = (
     {
       icon: <DocumentTextIcon className="w-4 h-4 md:w-5 md:h-5 mr-2 inline-block align-text-bottom text-muted-foreground" />,
       title: "총 게시물 수",
-      value: <span className="text-3xl font-bold tracking-tight">{(postsStats?.totalPosts ?? 0).toLocaleString()}</span>,
-      badge: renderBadge(postsStats?.todayPublishedPostsCount),
+      value: <span className="text-3xl font-bold tracking-tight">{(postsStats?.totalPostsCount ?? 0).toLocaleString()}</span>,
+      badge: renderBadge(postsStats?.todayPostsCount),
       description: "전체 게시글",
     },
     {
       icon: <ChatBubbleLeftIcon className="w-4 h-4 md:w-5 md:h-5 mr-2 inline-block align-text-bottom text-muted-foreground" />,
       title: "총 댓글 수",
-      value: <span className="text-3xl font-bold tracking-tight">{(commentsStats?.totalComments ?? 0).toLocaleString()}</span>,
+      value: <span className="text-3xl font-bold tracking-tight">{(commentsStats?.totalCommentsCount ?? 0).toLocaleString()}</span>,
       badge: renderBadge(commentsStats?.todayCommentsCount),
       description: "전체 댓글",
     },
     {
       icon: <PencilSquareIcon className="w-4 h-4 md:w-5 md:h-5 mr-2 inline-block align-text-bottom text-muted-foreground" />,
       title: "임시 저장글",
-      value: <span className="text-3xl font-bold tracking-tight">{draftCount}</span>,
+      value: <span className="text-3xl font-bold tracking-tight">{(postsStats?.draftPostsCount ?? 0).toLocaleString()}</span>,
       badge: <></>,
       description: "임시 저장된 글",
     },

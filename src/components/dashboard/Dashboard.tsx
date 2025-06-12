@@ -44,7 +44,6 @@ const Dashboard = () => {
     visitsData,
     postsStats,
     commentsStats,
-    postsStats?.draftPostsCount || 0,
   );
 
   const overallLoading = loadingViews || loadingPosts || loadingComments;

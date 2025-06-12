@@ -9,6 +9,7 @@ interface LeanVisit extends IVisit {
 }
 
 const VISIT_TYPES = {
+  DASHBOARD: 'dashboard',
   STATS: 'stats',
   LOGS: 'logs',
   PATHNAME_STATS: 'pathname-stats',
@@ -55,14 +56,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     const type = searchParams.get('type');
-    const daysParam = searchParams.get('days');
     const pathnamePattern = searchParams.get('pathname');
     const limit = parseInt(searchParams.get('limit') || '1000', 10);
     const sort = searchParams.get('sort') || '-date';
 
     const commonMatchConditions = buildCommonMatchConditions(searchParams);
 
-    if (!type && !daysParam && !pathnamePattern) {
+    if (type === VISIT_TYPES.DASHBOARD) {
       const totalViews = await Visit.countDocuments({});
       const todayViews = await Visit.countDocuments(commonMatchConditions)
         .sort({ date: 1 })

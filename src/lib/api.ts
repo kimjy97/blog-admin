@@ -8,8 +8,11 @@ export interface ApiResponse<T> {
   data: T;
   message?: string;
   total?: number;
-  totalPosts?: number;
-  totalAllComments?: number;
+  totalPostsCount?: number;
+  todayPostsCount?: number;
+  draftPostsCount?: number;
+  totalCommentsCount?: number;
+  todayCommentsCount?: number;
 }
 
 // --- 데이터 타입 인터페이스 ---
@@ -116,7 +119,7 @@ export const fetchDashboardVisits = async (): Promise<ApiResponse<{ totalViews: 
   const startDate = localStartDate.toISOString();
   const endDate = localEndDate.toISOString();
 
-  const queryParams = buildQueryString({ endDate, startDate });
+  const queryParams = buildQueryString({ type: 'dashboard', endDate, startDate });
 
   const response = await apiClient.get<ApiResponse<{ totalViews: number, todayViews: number }>>(`/visits${queryParams}`);
   return response.data;
@@ -194,14 +197,21 @@ export const fetchPostsForTags = async (): Promise<IPost[]> => {
 /**
  * 대시보드용 총 게시물 수 및 임시 저장된 게시물 수를 가져옵니다.
  */
-export const fetchPostsForDashboard = async (): Promise<{ totalPosts: number; draftPostsCount: number }> => {
-  const totalPostsResponse = await apiClient.get<ApiResponse<PostData[]>>("/posts?limit=1");
-  const totalPosts = totalPostsResponse.data.totalPosts || 0;
+export const fetchPostsForDashboard = async (): Promise<{ totalPostsCount: number; todayPostsCount: number; draftPostsCount: number }> => {
+  const today = new Date();
+  const localStartDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+  const localEndDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  const startDate = localStartDate.toISOString();
+  const endDate = localEndDate.toISOString();
 
-  const draftPostsResponse = await apiClient.get<ApiResponse<PostData[]>>("/posts?status=false&limit=1");
-  const draftPostsCount = draftPostsResponse.data.totalPosts || 0;
+  const queryParams = buildQueryString({ type: 'dashboard', endDate, startDate });
 
-  return { totalPosts, draftPostsCount };
+  const postsResponse = await apiClient.get<ApiResponse<{ totalPostsCount: number, todayPostsCount: number, draftPostsCount: number }>>(`/posts${queryParams}`);
+  const totalPostsCount = postsResponse.data.totalPostsCount || 0;
+  const todayPostsCount = postsResponse.data.todayPostsCount || 0;
+  const draftPostsCount = postsResponse.data.draftPostsCount || 0;
+
+  return { totalPostsCount, todayPostsCount, draftPostsCount };
 };
 
 /**
@@ -264,24 +274,20 @@ export const fetchCommentsForPost = async (postId: number | null): Promise<Comme
 /**
  * 대시보드용 댓글 수(총 댓글 및 오늘 댓글)를 가져옵니다.
  */
-export const fetchCommentsForDashboard = async (): Promise<{ totalComments: number; todayCommentsCount: number }> => {
-  const totalCommentsResponse = await apiClient.get<ApiResponse<CommentData[]>>("/comments?limit=1");
-  const totalComments = totalCommentsResponse.data.totalAllComments || 0;
+export const fetchCommentsForDashboard = async (): Promise<{ totalCommentsCount: number; todayCommentsCount: number }> => {
+  const today = new Date();
+  const localStartDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+  const localEndDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  const startDate = localStartDate.toISOString();
+  const endDate = localEndDate.toISOString();
 
-  const recentCommentsResponse = await apiClient.get<ApiResponse<CommentData[]>>("/comments?sort=-createdAt&limit=200");
-  let todayCommentsCount = 0;
+  const queryParams = buildQueryString({ type: 'dashboard', endDate, startDate });
 
-  if (recentCommentsResponse.data.success && recentCommentsResponse.data.data) {
-    const nowKst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-    const todayKstString = nowKst.toISOString().split('T')[0];
+  const commentsResponse = await apiClient.get<ApiResponse<{ totalCommentsCount: number; todayCommentsCount: number }>>(`/comments${queryParams}`);
+  const totalCommentsCount = commentsResponse.data.totalCommentsCount || 0;
+  const todayCommentsCount = commentsResponse.data.todayCommentsCount || 0;
 
-    todayCommentsCount = recentCommentsResponse.data.data.filter((comment) => {
-      if (!comment.createdAt) return false;
-      const commentDateKst = new Date(new Date(comment.createdAt).toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-      return commentDateKst.toISOString().split('T')[0] === todayKstString;
-    }).length;
-  }
-  return { totalComments, todayCommentsCount };
+  return { totalCommentsCount, todayCommentsCount };
 };
 
 /**

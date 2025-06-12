@@ -3,22 +3,41 @@ import { connectDB } from '@/lib/db';
 import Comment, { IComment } from '@/models/Comment';
 import Post from '@/models/Post';
 import mongoose from 'mongoose';
+import { buildCommonMatchConditions } from '@/lib/utils';
+
+const POST_TYPES = {
+  DASHBOARD: 'dashboard',
+};
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type');
     const postId = searchParams.get('postId');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const sort = searchParams.get('sort') || '-createdAt';
     const populatePost = searchParams.get('populatePost') === 'true';
 
-    const query: any = {};
+    const query: any = {
+      ...buildCommonMatchConditions(searchParams)
+    };
     if (postId) {
       query.postId = parseInt(postId, 10);
     } else if (populatePost) {
       query.postId = { $type: 'number' };
+    }
+
+    if (type === POST_TYPES.DASHBOARD) {
+      const totalCommentsCount = await Comment.countDocuments({});
+      const todayCommentsCount = await Comment.countDocuments(query);
+
+      return NextResponse.json({
+        success: true,
+        totalCommentsCount,
+        todayCommentsCount,
+      });
     }
 
     const initialComments = await Comment.find(query)

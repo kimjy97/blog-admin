@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Post, { IPost } from '@/models/Post';
 import mongoose from 'mongoose';
+import { buildCommonMatchConditions } from '@/lib/utils';
+
+const POST_TYPES = {
+  DASHBOARD: 'dashboard',
+};
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const sort = searchParams.get('sort') || '-createdAt';
@@ -14,7 +20,9 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get('q');
     const statusParam = searchParams.get('status');
 
-    const query: any = {};
+    const query: any = {
+      ...buildCommonMatchConditions(searchParams)
+    };
     if (tag) query.tags = tag;
     if (q) {
       query.$or = [
@@ -25,6 +33,18 @@ export async function GET(request: NextRequest) {
     }
     if (statusParam !== null) {
       query.status = statusParam === 'true';
+    }
+
+    if (type === POST_TYPES.DASHBOARD) {
+      const totalPostsCount = await Post.countDocuments({});
+      const draftPostsCount = await Post.countDocuments({ status: false });
+      const todayPostsCount = await Post.countDocuments({ status: true, ...query });
+      return NextResponse.json({
+        success: true,
+        totalPostsCount,
+        todayPostsCount,
+        draftPostsCount,
+      });
     }
 
     const posts = await Post.find(query)
