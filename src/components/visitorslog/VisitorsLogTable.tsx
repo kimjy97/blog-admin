@@ -16,10 +16,15 @@ import { isLocalIp } from "@/utils/isLocalIp"
 import { getBrowserName } from "@/utils/getBrowserName"
 import { useMemo, useState } from "react";
 import { useVisitorsLogStore } from "@/store/visitorsLogStore";
+import useSearchIPModalStore from "@/store/searchIPModalStore";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import SearchIPModal from "@/components/modals/SearchIPModal";
+import { Button } from "@/components/ui/button";
+import { MagnifyingGlassIcon, MapPinIcon } from "@heroicons/react/24/solid"
 
 export function VisitorsLogTable({ className }: React.HTMLAttributes<HTMLDivElement>) {
-  const { dateRange, includeLocal, ipSearch } = useVisitorsLogStore();
+  const { dateRange, includeLocal, ipSearch, setIpSearch } = useVisitorsLogStore();
+  const { setIsSearchIPModalOpen, setSearchIP } = useSearchIPModalStore();
   const [hideIp, setHideIp] = useState(false);
   const startDate = dateRange?.from;
   const endDate = dateRange?.to;
@@ -101,11 +106,37 @@ export function VisitorsLogTable({ className }: React.HTMLAttributes<HTMLDivElem
                 <TableRow
                   key={log._id}
                   className={cn(
-                    isLocalIp(log.ip) && "text-muted-foreground"
+                    isLocalIp(log.ip) && "text-muted-foreground",
+                    "group"
                   )}
                 >
                   <TableCell className="px-2">{formatDate(log.date)}</TableCell>
-                  <TableCell className="px-2">{hideIp ? '***.***.***.***' : log.ip}</TableCell>
+                  <TableCell className="px-2 flex items-center">
+                    <p className="mr-2">{hideIp ? '***.***.***.***' : log.ip}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-6 h-6 invisible group-hover:visible text-muted-foreground/40 hover:text-muted-foreground"
+                      onClick={() => {
+                        setIpSearch(log.ip);
+                      }}
+                    >
+                      <MagnifyingGlassIcon className="size-4" />
+                    </Button>
+                    {!isLocalIp(log.ip) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-6 h-6 invisible group-hover:visible text-muted-foreground/40 hover:text-muted-foreground"
+                        onClick={() => {
+                          setIsSearchIPModalOpen(true);
+                          setSearchIP(log.ip);
+                        }}
+                      >
+                        <MapPinIcon className="size-4" />
+                      </Button>
+                    )}
+                  </TableCell>
                   <TableCell className="truncate max-w-[200px] sm:max-w-none px-2">{log.pathname}</TableCell>
                   <TableCell className="truncate max-w-[200px] sm:max-w-none px-2">
                     {getBrowserName(log.userAgent)}
@@ -116,6 +147,7 @@ export function VisitorsLogTable({ className }: React.HTMLAttributes<HTMLDivElem
           </Table>
         </div>
       )}
+      <SearchIPModal />
     </div>
   )
 }

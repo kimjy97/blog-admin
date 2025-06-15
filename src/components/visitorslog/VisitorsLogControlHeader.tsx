@@ -60,14 +60,12 @@ const VisitorsLogControlHeader = () => {
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="end">
             <Calendar
-              initialFocus
               locale={ko}
               mode="range"
               defaultMonth={dateRange?.from}
               selected={dateRange}
               onSelect={setDateRange}
               numberOfMonths={2}
-              toDate={new Date()}
             />
           </PopoverContent>
         </Popover>
