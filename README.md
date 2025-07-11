@@ -49,3 +49,4 @@
 
 - **서버 컴포넌트**: Next.js 15 App Router 활용
 - **데이터 페칭**: TanStack Query로 캐싱 및 동기화
+- **캐시 무효화**: REVALIDATE_SECRET을 통한 블로그 캐시 자동 무효화

@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import Comment, { IComment } from '@/models/Comment';
 import Post from '@/models/Post';
 import mongoose from 'mongoose';
+import { revalidateCache } from '@/lib/utils';
 import { buildCommonMatchConditions } from '@/lib/utils';
 
 const POST_TYPES = {
@@ -139,6 +140,10 @@ export async function POST(request: NextRequest) {
     const newComment = new Comment(newCommentData);
 
     await newComment.save();
+
+    // 댓글 생성 후 캐시 무효화
+    await revalidateCache();
+
     return NextResponse.json({ success: true, data: newComment }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

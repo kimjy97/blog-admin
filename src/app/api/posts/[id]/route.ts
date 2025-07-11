@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Post, { IPost } from '@/models/Post';
 import mongoose from 'mongoose';
+import { revalidateCache } from '@/lib/utils';
 
 function extractIdFromRequest(request: NextRequest): string | null {
   const id = request.nextUrl.pathname.split('/').pop();
@@ -58,6 +59,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: '게시글을 찾을 수 없거나 업데이트에 실패했습니다.' }, { status: 404 });
     }
 
+    // 게시물 수정 후 캐시 무효화
+    await revalidateCache();
+
     return NextResponse.json({ success: true, post: updatedPost });
   } catch (error: any) {
     console.error('Error updating post:', error);
@@ -86,6 +90,9 @@ export async function DELETE(request: NextRequest) {
     if (!deletedPost) {
       return NextResponse.json({ success: false, error: '게시글을 찾을 수 없거나 삭제에 실패했습니다.' }, { status: 404 });
     }
+
+    // 게시물 삭제 후 캐시 무효화
+    await revalidateCache();
 
     return NextResponse.json({ success: true, message: '게시글이 성공적으로 삭제되었습니다.' });
   } catch (error: any) {

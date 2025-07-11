@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Post, { IPost } from '@/models/Post';
 import mongoose from 'mongoose';
-import { buildCommonMatchConditions } from '@/lib/utils';
+import { buildCommonMatchConditions, revalidateCache } from '@/lib/utils';
 
 const POST_TYPES = {
   DASHBOARD: 'dashboard',
@@ -139,6 +139,10 @@ export async function POST(request: NextRequest) {
     });
 
     await newPost.save();
+
+    // 게시물 생성 후 캐시 무효화
+    await revalidateCache();
+
     return NextResponse.json({ success: true, post: newPost }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

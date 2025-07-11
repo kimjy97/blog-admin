@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Comment, { IComment } from '@/models/Comment';
 import Post from '@/models/Post';
+import { revalidateCache } from '@/lib/utils';
 
 function extractIdFromRequest(request: NextRequest): string | null {
   const id = request.nextUrl.pathname.split('/').pop();
@@ -87,6 +88,9 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // 댓글 수정 후 캐시 무효화
+    await revalidateCache();
+
     return NextResponse.json({ success: true, data: updatedComment });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -111,6 +115,9 @@ export async function DELETE(request: NextRequest) {
     if (!updatedComment) {
       return NextResponse.json({ success: false, error: '삭제할 댓글을 찾을 수 없습니다.' }, { status: 404 });
     }
+
+    // 댓글 삭제 후 캐시 무효화
+    await revalidateCache();
 
     return NextResponse.json({ success: true, message: '댓글이 성공적으로 삭제(비활성화)되었습니다.' });
   } catch (error: any) {

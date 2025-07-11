@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import GuestbookComment, { IGuestbookComment } from '@/models/GuestbookComment';
+import { revalidateCache } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,6 +64,10 @@ export async function POST(request: NextRequest) {
 
     const newComment = new GuestbookComment(newCommentData);
     await newComment.save();
+
+    // 방명록 댓글 생성 후 캐시 무효화
+    await revalidateCache();
+
     return NextResponse.json({ success: true, data: newComment }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
