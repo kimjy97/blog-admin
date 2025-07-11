@@ -2,7 +2,7 @@
 
 개인 블로그 운영을 위한 관리자 대시보드입니다. 게시물 작성 및 관리부터 통계 분석까지 블로그 관리에 필요한 모든 기능을 제공합니다.
 
-![image](https://github.com/user-attachments/assets/1c8b31c9-941b-4f16-901b-a8637ffa4e2e)
+<img width="1920" height="1055" alt="blogadmin" src="https://github.com/user-attachments/assets/824ce4b1-5669-419f-a048-f32d1fb93755" />
 
 ## ✨ 주요 기능
 
